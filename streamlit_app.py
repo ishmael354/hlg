@@ -190,8 +190,16 @@ def main():
         csv_data = download_chat_as_csv()
         st.sidebar.download_button(label="Download Chat as CSV", data=csv_data, file_name='chat_log.csv', mime='text/csv')
 
+        st.title("AI Assistant Chat")
+        st.subheader("Ask questions about your dataset")
+
+        st.write("Example queries:")
+        st.write("- What are some trends in this data set?")
+        st.write("- Suggest some visualizations to make based on this data")
+        st.write("- Tell me some unexpected findings in the data set")
+
         user_msg = st.chat_input(
-            "Message", on_submit=disable_form, disabled=st.session_state.in_progress
+            "What is your query?", on_submit=disable_form, disabled=st.session_state.in_progress
         )
 
         if user_msg:
