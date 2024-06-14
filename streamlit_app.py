@@ -53,7 +53,9 @@ else:
 
         with st.chat_message("assistant"):
             payload = {
+                "model": st.session_state["assistant_id"],
                 "messages": [
+                    {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
                 ]
             }
@@ -62,7 +64,7 @@ else:
                 "Content-Type": "application/json"
             }
             try:
-                response = requests.post(f"https://api.openai.com/v1/assistants/{st.session_state['assistant_id']}/completions", json=payload, headers=headers)
+                response = requests.post("https://api.openai.com/v1/completions", json=payload, headers=headers)
                 st.write("Response from OpenAI:", response.text)  # Debugging: Print the response to check its structure
                 response_json = response.json()
 
@@ -86,7 +88,9 @@ else:
 
         with st.chat_message("assistant"):
             payload = {
+                "model": st.session_state["assistant_id"],
                 "messages": [
+                    {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": content}
                 ]
             }
@@ -95,7 +99,7 @@ else:
                 "Content-Type": "application/json"
             }
             try:
-                response = requests.post(f"https://api.openai.com/v1/assistants/{st.session_state['assistant_id']}/completions", json=payload, headers=headers)
+                response = requests.post("https://api.openai.com/v1/completions", json=payload, headers=headers)
                 st.write("Response from OpenAI:", response.text)  # Debugging: Print the response to check its structure
                 response_json = response.json()
 
