@@ -252,7 +252,8 @@ def main():
             run_stream(user_msg, file, assistant_id)
             st.session_state.in_progress = False
             st.rerun
-                render_chat()
+            render_chat()
     download_chat_as_csv()
-    if name == “main”:
-main()
+    
+if name == “main”:
+    main()
