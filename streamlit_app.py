@@ -25,21 +25,21 @@ def handle_api_error(e):
 def create_thread():
     try:
         return openai.Thread.create()
-    except openai.error.OpenAIError as e:
+    except openai.OpenAIError as e:
         handle_api_error(e)
 
 # Function to create a message
 def create_message(thread_id, content, file_ids=None):
     try:
         return openai.Thread.create_message(thread_id, {"role": "user", "content": content, "file_ids": file_ids})
-    except openai.error.OpenAIError as e:
+    except openai.OpenAIError as e:
         handle_api_error(e)
 
 # Function to create a run
 def create_run(thread_id, assistant_id):
     try:
         return openai.Thread.create_run(thread_id, {"assistant_id": assistant_id})
-    except openai.error.OpenAIError as e:
+    except openai.OpenAIError as e:
         handle_api_error(e)
 
 # Function to get the assistant's response
@@ -56,7 +56,7 @@ def get_assistant_response(thread_id, run_id):
                     elif step['status'] == "failed":
                         handle_api_error(f"Step failed: {step['last_error']}")
             time.sleep(0.2)
-    except openai.error.OpenAIError as e:
+    except openai.OpenAIError as e:
         handle_api_error(e)
 
 # Login form
