@@ -3,8 +3,6 @@ import requests
 import pandas as pd
 from datetime import datetime
 import openai
-from openai import AssistantEventHandler
-from typing_extensions import override
 
 # Title of the app
 st.title("HLG_PT - Advanced Social Listening Tool")
@@ -15,50 +13,41 @@ def authenticate(username, password):
         return True
     return False
 
-# Custom event handler for streaming responses
-class StreamlitEventHandler(AssistantEventHandler):
-    def __init__(self, container):
-        self.container = container
-        self.text = ""
+# Function to handle API errors
+def handle_api_error(e):
+    st.error(f"API error: {str(e)}")
+    st.stop()
 
-    @override
-    def on_text_created(self, text) -> None:
-        self.text = text
-        self.update_container()
+# Function to get the assistant's response with error handling and logging
+def get_assistant_response(openai, thread_id, run_id):
+    try:
+        while True:
+            steps = openai.Threads.list_run_steps(thread_id, run_id)
+            if steps['data']:
+                for step in steps['data']:
+                    if step['status'] == "completed":
+                        message_id = step['step_details']['message_creation']['message_id']
+                        message = openai.Threads.retrieve_message(message_id, thread_id)
+                        return message['content'][0]['text']['value']
+                    elif step['status'] == "failed":
+                        handle_api_error(f"Step failed: {step['last_error']}")
+            st.time.sleep(0.2)  # Wait for 200ms before checking again
+    except Exception as e:
+        handle_api_error(e)
 
-    @override
-    def on_text_delta(self, delta, snapshot):
-        self.text += delta.value
-        self.update_container()
+# Function to create a thread with error handling and logging
+def create_thread():
+    try:
+        return openai.Threads.create()
+    except Exception as e:
+        handle_api_error(e)
 
-    def on_tool_call_created(self, tool_call):
-        self.text += f"\n{tool_call.type}\n"
-        self.update_container()
-
-    def on_tool_call_delta(self, delta, snapshot):
-        if delta.type == 'code_interpreter':
-            if delta.code_interpreter.input:
-                self.text += delta.code_interpreter.input
-                self.update_container()
-            if delta.code_interpreter.outputs:
-                self.text += "\n\noutput >"
-                for output in delta.code_interpreter.outputs:
-                    if output.type == "logs":
-                        self.text += f"\n{output.logs}"
-                        self.update_container()
-
-    def update_container(self):
-        self.container.markdown(self.text)
-
-# Function to get the assistant's response
-def get_assistant_response(openai, thread_id, run_id, container):
-    event_handler = StreamlitEventHandler(container)
-    with openai.Threads.runs.stream(
-        thread_id=thread_id,
-        assistant_id=st.session_state["assistant_id"],
-        event_handler=event_handler,
-    ) as stream:
-        stream.until_done()
+# Function to create a run with error handling and logging
+def create_run(thread_id, assistant_id):
+    try:
+        return openai.Threads.create_run(thread_id, {"assistant_id": assistant_id})
+    except Exception as e:
+        handle_api_error(e)
 
 # Login form
 if "authenticated" not in st.session_state:
@@ -99,17 +88,23 @@ else:
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        with st.chat_message("assistant") as container:
+        with st.chat_message("assistant"):
             openai.api_key = st.secrets["OPENAI_API_KEY"]
             if not st.session_state.get("thread"):
-                thread = openai.Threads.create()
+                thread = create_thread()
                 st.session_state["thread"] = thread
             else:
                 thread = st.session_state["thread"]
 
-            openai.Threads.create_message(thread['id'], {"role": "user", "content": prompt})
-            run = openai.Threads.create_run(thread['id'], {"assistant_id": st.session_state["assistant_id"]})
-            get_assistant_response(openai, thread['id'], run['id'], container)
+            try:
+                openai.Threads.create_message(thread['id'], {"role": "user", "content": prompt})
+                run = create_run(thread['id'], st.session_state["assistant_id"])
+                response = get_assistant_response(openai, thread['id'], run['id'])
+                
+                st.markdown(response)
+                st.session_state.messages.append({"role": "assistant", "content": response})
+            except Exception as e:
+                handle_api_error(e)
 
     # File upload
     uploaded_file = st.file_uploader("Upload a file")
@@ -119,17 +114,23 @@ else:
         with st.chat_message("user"):
             st.markdown(content)
 
-        with st.chat_message("assistant") as container:
+        with st.chat_message("assistant"):
             openai.api_key = st.secrets["OPENAI_API_KEY"]
             if not st.session_state.get("thread"):
-                thread = openai.Threads.create()
+                thread = create_thread()
                 st.session_state["thread"] = thread
             else:
                 thread = st.session_state["thread"]
 
-            openai.Threads.create_message(thread['id'], {"role": "user", "content": content})
-            run = openai.Threads.create_run(thread['id'], {"assistant_id": st.session_state["assistant_id"]})
-            get_assistant_response(openai, thread['id'], run['id'], container)
+            try:
+                openai.Threads.create_message(thread['id'], {"role": "user", "content": content})
+                run = create_run(thread['id'], st.session_state["assistant_id"])
+                response = get_assistant_response(openai, thread['id'], run['id'])
+                
+                st.markdown(response)
+                st.session_state.messages.append({"role": "assistant", "content": response})
+            except Exception as e:
+                handle_api_error(e)
 
     # Save chat history
     if st.button("Save Chat History"):
