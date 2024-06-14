@@ -49,11 +49,11 @@ def create_assistant():
 
 # Function to create a thread
 def create_thread():
-    return openai.Threads.create()
+    return openai.beta.threads.create()
 
 # Function to create a message
 def create_message(thread_id, content):
-    return openai.Threads.messages.create(
+    return openai.beta.threads.messages.create(
         thread_id=thread_id,
         role="user",
         content=content
@@ -108,7 +108,7 @@ else:
             assistant = create_assistant()
             message = create_message(thread.id, prompt)
 
-            with openai.Threads.runs.stream(
+            with openai.beta.threads.runs.stream(
                 thread_id=thread.id,
                 assistant_id=assistant.id,
                 instructions="Please address the user as Jane Doe. The user has a premium account.",
@@ -137,7 +137,7 @@ else:
 
             message = create_message(thread.id, content)
 
-            with openai.Threads.runs.stream(
+            with openai.beta.threads.runs.stream(
                 thread_id=thread.id,
                 assistant_id=st.session_state["assistant_id"],
                 instructions="Please address the user as Jane Doe. The user has a premium account.",
