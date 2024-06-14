@@ -7,7 +7,10 @@ from typing_extensions import override
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# Verify that all required secrets are loaded
+# Debugging: Print the loaded secrets
+st.write(st.secrets)
+
+# Verify that all secrets are loaded
 required_secrets = [
     "ASSISTANT_1_ID", "ASSISTANT_2_ID", "ASSISTANT_3_ID", "ASSISTANT_4_ID"
 ]
