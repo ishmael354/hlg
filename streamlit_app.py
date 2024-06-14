@@ -2,6 +2,11 @@ import streamlit as st
 import openai
 import time
 from openai.error import OpenAIError
+import json
+import os
+
+# Initialize OpenAI API key
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Title of the app
 st.title("HLG_PT - Advanced Social Listening Tool")
@@ -25,9 +30,9 @@ def create_thread():
         handle_api_error(e)
 
 # Function to create a message
-def create_message(thread_id, content):
+def create_message(thread_id, content, file_ids=None):
     try:
-        return openai.Thread.create_message(thread_id, {"role": "user", "content": content})
+        return openai.Thread.create_message(thread_id, {"role": "user", "content": content, "file_ids": file_ids})
     except OpenAIError as e:
         handle_api_error(e)
 
@@ -95,7 +100,6 @@ else:
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            openai.api_key = st.secrets["OPENAI_API_KEY"]
             if not st.session_state.get("thread"):
                 thread = create_thread()
                 st.session_state["thread"] = thread
@@ -118,7 +122,6 @@ else:
             st.markdown(content)
 
         with st.chat_message("assistant"):
-            openai.api_key = st.secrets["OPENAI_API_KEY"]
             if not st.session_state.get("thread"):
                 thread = create_thread()
                 st.session_state["thread"] = thread
