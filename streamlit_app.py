@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import pandas as pd
 from datetime import datetime
+import openai  # Import the OpenAI package
 
 # Title of the app
 st.title("HLG_PT - Advanced Social Listening Tool")
@@ -15,9 +16,9 @@ def authenticate(username, password):
 # Function to get the assistant's response
 def get_assistant_response(openai, thread_id, run_id):
     while True:
-        run_status = openai.beta.threads.runs.retrieve(thread_id, run_id)
+        run_status = openai.Threads.retrieve_run(thread_id, run_id)
         if run_status['status'] == "completed":
-            messages = openai.beta.threads.messages.list(thread_id)
+            messages = openai.Threads.list_messages(thread_id)
             return messages['data'][0]['content'][0]['text']['value']
         st.time.sleep(0.2)  # Wait for 200ms before checking again
 
@@ -61,15 +62,15 @@ else:
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            openai = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+            openai.api_key = st.secrets["OPENAI_API_KEY"]
             if not st.session_state.get("thread"):
-                thread = openai.beta.threads.create()
+                thread = openai.Threads.create()
                 st.session_state["thread"] = thread
             else:
                 thread = st.session_state["thread"]
 
-            openai.beta.threads.messages.create(thread['id'], {"role": "user", "content": prompt})
-            run = openai.beta.threads.runs.create(thread['id'], {"assistant_id": st.session_state["assistant_id"]})
+            openai.Threads.create_message(thread['id'], {"role": "user", "content": prompt})
+            run = openai.Threads.create_run(thread['id'], {"assistant_id": st.session_state["assistant_id"]})
             response = get_assistant_response(openai, thread['id'], run['id'])
             
             st.markdown(response)
@@ -84,15 +85,15 @@ else:
             st.markdown(content)
 
         with st.chat_message("assistant"):
-            openai = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+            openai.api_key = st.secrets["OPENAI_API_KEY"]
             if not st.session_state.get("thread"):
-                thread = openai.beta.threads.create()
+                thread = openai.Threads.create()
                 st.session_state["thread"] = thread
             else:
                 thread = st.session_state["thread"]
 
-            openai.beta.threads.messages.create(thread['id'], {"role": "user", "content": content})
-            run = openai.beta.threads.runs.create(thread['id'], {"assistant_id": st.session_state["assistant_id"]})
+            openai.Threads.create_message(thread['id'], {"role": "user", "content": content})
+            run = openai.Threads.create_run(thread['id'], {"assistant_id": st.session_state["assistant_id"]})
             response = get_assistant_response(openai, thread['id'], run['id'])
             
             st.markdown(response)
