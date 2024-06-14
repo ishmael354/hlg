@@ -108,10 +108,10 @@ else:
         with st.spinner("Thinking..."):
             while True:
                 steps = get_run_steps(client, st.session_state["thread_id"], run.id)
-                st.write(steps)  # Log the steps to Streamlit interface for debugging
+                st.write("Run Steps:", steps)  # Log the steps to Streamlit interface for debugging
 
                 # Check if steps data is available
-                if 'data' in steps and steps['data']:
+                if steps and 'data' in steps and steps['data']:
                     for step in steps['data']:
                         st.write(f"Step ID: {step['id']}, Status: {step['status']}, Type: {step['type']}")
                         if step['status'] == "completed" and step['type'] == "message_creation":
@@ -148,10 +148,10 @@ else:
         with st.spinner("Thinking..."):
             while True:
                 steps = get_run_steps(client, st.session_state["thread_id"], run.id)
-                st.write(steps)  # Log the steps to Streamlit interface for debugging
+                st.write("Run Steps:", steps)  # Log the steps to Streamlit interface for debugging
 
                 # Check if steps data is available
-                if 'data' in steps and steps['data']:
+                if steps and 'data' in steps and steps['data']:
                     for step in steps['data']:
                         st.write(f"Step ID: {step['id']}, Status: {step['status']}, Type: {step['type']}")
                         if step['status'] == "completed" and step['type'] == "message_creation":
