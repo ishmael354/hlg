@@ -9,7 +9,8 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Verify that all secrets are loaded
 required_secrets = [
-    "ASSISTANT1_ID", "ASSISTANT2_ID", "ASSISTANT3_ID", "ASSISTANT4_ID"
+    "ASSISTANT1_ID", "ASSISTANT2_ID", "ASSISTANT3_ID", "ASSISTANT4_ID",
+    "USERNAME", "PASSWORD"
 ]
 
 missing_secrets = [secret for secret in required_secrets if secret not in st.secrets]
@@ -51,8 +52,13 @@ class EventHandler(AssistantEventHandler):
 
     @override
     def on_text_done(self, text):
-        st.session_state.current_markdown.markdown(text, True)
-        st.session_state.chat_log.append({"name": "assistant", "msg": text})
+        # Filter out annotations from the text
+        if isinstance(text, dict) and 'value' in text:
+            clean_text = text['value']
+        else:
+            clean_text = text
+        st.session_state.current_markdown.markdown(clean_text, True)
+        st.session_state.chat_log.append({"name": "assistant", "msg": clean_text})
 
     @override
     def on_tool_call_created(self, tool_call):
@@ -133,44 +139,61 @@ if "chat_log" not in st.session_state:
 if "in_progress" not in st.session_state:
     st.session_state.in_progress = False
 
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+def login(username, password):
+    return username == st.secrets["USERNAME"] and password == st.secrets["PASSWORD"]
+
 def disable_form():
     st.session_state.in_progress = True
 
 def main():
-    st.title("Assistant Selector")
-    assistant_selection = st.selectbox(
-        "Choose an assistant",
-        list(assistants.keys()),
-        format_func=lambda x: assistants[x]
-    )
-    assistant_id = assistant_ids[assistant_selection]
+    if not st.session_state.logged_in:
+        st.title("Login")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        if st.button("Login"):
+            if login(username, password):
+                st.session_state.logged_in = True
+                st.experimental_rerun()
+            else:
+                st.error("Invalid username or password")
+    else:
+        st.title("Assistant Selector")
+        assistant_selection = st.selectbox(
+            "Choose an assistant",
+            list(assistants.keys()),
+            format_func=lambda x: assistants[x]
+        )
+        assistant_id = assistant_ids[assistant_selection]
 
-    user_msg = st.chat_input(
-        "Message", on_submit=disable_form, disabled=st.session_state.in_progress
-    )
+        user_msg = st.chat_input(
+            "Message", on_submit=disable_form, disabled=st.session_state.in_progress
+        )
 
-    uploaded_file = st.sidebar.file_uploader(
-        "Upload a file",
-        type=[
-            "txt", "pdf", "png", "jpg", "jpeg", "csv", "json", "geojson", "xlsx", "xls"
-        ],
-        disabled=st.session_state.in_progress,
-    )
+        uploaded_file = st.sidebar.file_uploader(
+            "Upload a file",
+            type=[
+                "txt", "pdf", "png", "jpg", "jpeg", "csv", "json", "geojson", "xlsx", "xls"
+            ],
+            disabled=st.session_state.in_progress,
+        )
 
-    if user_msg:
+        if user_msg:
+            render_chat()
+            with st.chat_message("user"):
+                st.markdown(user_msg, True)
+            st.session_state.chat_log.append({"name": "user", "msg": user_msg})
+
+            file = None
+            if uploaded_file is not None:
+                file = handle_uploaded_file(uploaded_file)
+            run_stream(user_msg, file, assistant_id)
+            st.session_state.in_progress = False
+            st.rerun()
+
         render_chat()
-        with st.chat_message("user"):
-            st.markdown(user_msg, True)
-        st.session_state.chat_log.append({"name": "user", "msg": user_msg})
-
-        file = None
-        if uploaded_file is not None:
-            file = handle_uploaded_file(uploaded_file)
-        run_stream(user_msg, file, assistant_id)
-        st.session_state.in_progress = False
-        st.rerun()
-
-    render_chat()
 
 if __name__ == "__main__":
     main()
