@@ -7,10 +7,9 @@ from typing_extensions import override
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# Verify that all secrets are loaded
+# Verify that all required secrets are loaded
 required_secrets = [
-    "ASSISTANT_1_ID", "ASSISTANT_2_ID", "ASSISTANT_3_ID", "ASSISTANT_4_ID",
-    "ASSISTANT_1_TITLE", "ASSISTANT_2_TITLE", "ASSISTANT_3_TITLE", "ASSISTANT_4_TITLE"
+    "ASSISTANT_1_ID", "ASSISTANT_2_ID", "ASSISTANT_3_ID", "ASSISTANT_4_ID"
 ]
 
 missing_secrets = [secret for secret in required_secrets if secret not in st.secrets]
@@ -20,10 +19,10 @@ if missing_secrets:
     st.stop()
 
 assistants = {
-    "assistant_1": st.secrets["ASSISTANT_1_TITLE"],
-    "assistant_2": st.secrets["ASSISTANT_2_TITLE"],
-    "assistant_3": st.secrets["ASSISTANT_3_TITLE"],
-    "assistant_4": st.secrets["ASSISTANT_4_TITLE"]
+    "assistant_1": "Assistant 1",
+    "assistant_2": "Assistant 2",
+    "assistant_3": "Assistant 3",
+    "assistant_4": "Assistant 4"
 }
 
 assistant_ids = {
