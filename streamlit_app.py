@@ -255,5 +255,5 @@ def main():
             render_chat()
     download_chat_as_csv()
     
-if name == “main”:
+if __name__ == "__main__":
     main()
