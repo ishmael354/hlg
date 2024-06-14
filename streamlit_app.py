@@ -132,7 +132,7 @@ def render_chat():
     try:
         html_content = generate_html_with_tooltips(st.session_state.chat_log)
         add_tooltip_css()
-        components.html(html_content, height=600)
+        components.html(html_content, height=600, scrolling=True)
     except Exception as e:
         st.error(f"Error rendering chat: {e}")
 
