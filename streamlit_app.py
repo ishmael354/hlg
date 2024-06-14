@@ -55,7 +55,6 @@ else:
             payload = {
                 "question": prompt,
                 "overrideConfig": {
-                    "selectedAssistant": "example",
                     "disableFileDownload": True,
                 }
             }
@@ -84,7 +83,6 @@ else:
             payload = {
                 "question": content,
                 "overrideConfig": {
-                    "selectedAssistant": "example",
                     "disableFileDownload": True,
                 }
             }
