@@ -1,3 +1,15 @@
+import subprocess
+import sys
+
+# Function to install packages
+def install_packages():
+    packages = ['streamlit', 'openai', 'pandas']
+    for package in packages:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+# Install the packages
+install_packages()
+
 import streamlit as st
 import openai
 import time
@@ -147,8 +159,7 @@ else:
 
 # Function to get installed packages
 def get_installed_packages():
-    import subprocess
-    return subprocess.run(["pip", "freeze"], capture_output=True, text=True).stdout
+    return subprocess.run([sys.executable, "-m", "pip", "freeze"], capture_output=True, text=True).stdout
 
 # Display installed packages for debugging
 st.text_area("Installed Packages", get_installed_packages())
