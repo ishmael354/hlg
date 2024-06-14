@@ -2,50 +2,48 @@ import streamlit as st
 
 def generate_html_with_citations(chat_log):
     html_content = ""
+    citation_details = ""
     for chat in chat_log:
         msg = chat["msg"]
         citations = chat.get("citations", [])
-        citation_texts = []
         for idx, citation in enumerate(citations):
             citation_text, citation_source = citation
-            marker = f'<span style="color:blue; cursor:pointer;" onclick="document.getElementById(\'citation-{idx + 1}\').style.display=\'block\';">[{idx + 1}]</span>'
+            marker = f'<span style="color:blue; cursor:pointer;" onclick="showCitation({idx + 1})">[{idx + 1}]</span>'
             msg = msg.replace(citation_text, marker)
-            citation_texts.append((idx + 1, citation_source))
+            citation_details += f'<div id="citation-{idx + 1}" style="display:none;">[{idx + 1}] {citation_source}</div>'
         html_content += f'<p>{msg}</p>'
-        for idx, source in citation_texts:
-            html_content += f'<p id="citation-{idx}" style="display:none;"><strong>[{idx}]</strong> {source}</p>'
-    return html_content
+    return html_content, citation_details
 
 def add_tooltip_css():
     tooltip_css = """
     <style>
-    .tooltip {
-      position: relative;
-      display: inline-block;
-      cursor: pointer;
-      border-bottom: 1px dotted black;
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 250px;
+        height: 100%;
+        background-color: #f1f1f1;
+        padding-top: 20px;
+        overflow-x: hidden;
+        transition: 0.5s;
+        z-index: 1;
     }
-
-    .tooltip .tooltiptext {
-      visibility: hidden;
-      width: 120px;
-      background-color: black;
-      color: #fff;
-      text-align: center;
-      border-radius: 6px;
-      padding: 5px 0;
-      position: absolute;
-      z-index: 1;
-      bottom: 125%; /* Position the tooltip above the text */
-      left: 50%;
-      margin-left: -60px;
-      opacity: 0;
-      transition: opacity 0.3s;
+    .sidebar a {
+        padding: 10px 15px;
+        text-decoration: none;
+        font-size: 18px;
+        color: #818181;
+        display: block;
+        transition: 0.3s;
     }
-
-    .tooltip:hover .tooltiptext {
-      visibility: visible;
-      opacity: 1;
+    .sidebar a:hover {
+        color: #f1f1f1;
+    }
+    .main {
+        margin-left: 260px;
+        transition: margin-left 0.5s;
+        padding: 20px;
     }
     </style>
     """
