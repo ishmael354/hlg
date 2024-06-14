@@ -171,17 +171,13 @@ def main():
             else:
                 st.error("Invalid username or password")
     else:
-        st.title("Assistant Selector")
-        assistant_selection = st.selectbox(
+        st.sidebar.title("Assistant Selector")
+        assistant_selection = st.sidebar.selectbox(
             "Choose an assistant",
             list(assistants.keys()),
             format_func=lambda x: assistants[x]
         )
         assistant_id = assistant_ids[assistant_selection]
-
-        user_msg = st.chat_input(
-            "Message", on_submit=disable_form, disabled=st.session_state.in_progress
-        )
 
         uploaded_file = st.sidebar.file_uploader(
             "Upload a file",
@@ -189,6 +185,12 @@ def main():
                 "txt", "pdf", "png", "jpg", "jpeg", "csv", "json", "geojson", "xlsx", "xls"
             ],
             disabled=st.session_state.in_progress,
+        )
+
+        st.sidebar.button("Download Chat History", on_click=download_chat_as_csv)
+
+        user_msg = st.chat_input(
+            "Message", on_submit=disable_form, disabled=st.session_state.in_progress
         )
 
         if user_msg:
@@ -205,7 +207,6 @@ def main():
             st.rerun()
 
         render_chat()
-        download_chat_as_csv()
 
 if __name__ == "__main__":
     main()
