@@ -109,27 +109,26 @@ else:
             while True:
                 steps = get_run_steps(client, st.session_state["thread_id"], run.id)
                 st.write(steps)  # Log the steps to Streamlit interface for debugging
+
+                # Check if steps data is available
                 if 'data' in steps and steps['data']:
-                    status = steps['data'][0]['status']
-                    st.write(f"Run status: {status}")  # Log the status
-                    if status == "completed":
-                        break
+                    for step in steps['data']:
+                        st.write(f"Step ID: {step['id']}, Status: {step['status']}, Type: {step['type']}")
+                        if step['status'] == "completed" and step['type'] == "message_creation":
+                            message_id = step['step_details']['message_creation']['message_id']
+                            message = retrieve_message(client, message_id, st.session_state["thread_id"])
+                            response = message['content'][0]['text']['value']
+                            st.markdown(response)
+                            st.session_state.messages.append({"role": "assistant", "content": response})
+                            break
+                        elif step['status'] == "in_progress" and step['type'] == "tool_calls":
+                            st.write("Tool calls in progress...")
+                    else:
+                        st.write("No completed message creation step yet.")
                 else:
                     st.write("No data in steps")
-                time.sleep(1)  # Wait for 1 second before checking again
 
-            # Retrieve message
-            if 'data' in steps and steps['data']:
-                for step in steps['data']:
-                    if step['status'] == "completed" and step['type'] == "message_creation":
-                        message_id = step['step_details']['message_creation']['message_id']
-                        message = retrieve_message(client, message_id, st.session_state["thread_id"])
-                        response = message['content'][0]['text']['value']
-                        st.markdown(response)
-                        st.session_state.messages.append({"role": "assistant", "content": response})
-                        break
-            else:
-                st.error("Failed to retrieve steps data")
+                time.sleep(1)  # Wait for 1 second before checking again
 
     # File upload
     uploaded_file = st.file_uploader("Upload a file")
@@ -150,27 +149,26 @@ else:
             while True:
                 steps = get_run_steps(client, st.session_state["thread_id"], run.id)
                 st.write(steps)  # Log the steps to Streamlit interface for debugging
+
+                # Check if steps data is available
                 if 'data' in steps and steps['data']:
-                    status = steps['data'][0]['status']
-                    st.write(f"Run status: {status}")  # Log the status
-                    if status == "completed":
-                        break
+                    for step in steps['data']:
+                        st.write(f"Step ID: {step['id']}, Status: {step['status']}, Type: {step['type']}")
+                        if step['status'] == "completed" and step['type'] == "message_creation":
+                            message_id = step['step_details']['message_creation']['message_id']
+                            message = retrieve_message(client, message_id, st.session_state["thread_id"])
+                            response = message['content'][0]['text']['value']
+                            st.markdown(response)
+                            st.session_state.messages.append({"role": "assistant", "content": response})
+                            break
+                        elif step['status'] == "in_progress" and step['type'] == "tool_calls":
+                            st.write("Tool calls in progress...")
+                    else:
+                        st.write("No completed message creation step yet.")
                 else:
                     st.write("No data in steps")
-                time.sleep(1)  # Wait for 1 second before checking again
 
-            # Retrieve message
-            if 'data' in steps and steps['data']:
-                for step in steps['data']:
-                    if step['status'] == "completed" and step['type'] == "message_creation":
-                        message_id = step['step_details']['message_creation']['message_id']
-                        message = retrieve_message(client, message_id, st.session_state["thread_id"])
-                        response = message['content'][0]['text']['value']
-                        st.markdown(response)
-                        st.session_state.messages.append({"role": "assistant", "content": response})
-                        break
-            else:
-                st.error("Failed to retrieve steps data")
+                time.sleep(1)  # Wait for 1 second before checking again
 
     # Save chat history
     if st.button("Save Chat History"):
