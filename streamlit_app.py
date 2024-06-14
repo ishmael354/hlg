@@ -93,31 +93,21 @@ class EventHandler(AssistantEventHandler):
                         st.markdown(output, True)
                         st.session_state.chat_log.append({"name": "assistant", "msg": output})
 
-def create_thread(content, file):
-    messages = [
-        {
-            "role": "user",
-            "content": content,
-        }
-    ]
-    if file is not None:
-        messages[0].update({"file_ids": [file.id]})
+def create_thread():
     thread = openai.beta.threads.create()
     return thread
 
 def create_message(thread, content, file):
     attachments = []
     if file is not None:
-        attachments.append(
-            {"file_id": file.id, "tools": [{"type": "code_interpreter"}]}
-        )
+        attachments.append({"file_id": file.id, "tools": [{"type": "code_interpreter"}]})
     openai.beta.threads.messages.create(
         thread_id=thread.id, role="user", content=content, attachments=attachments
     )
 
 def run_stream(user_input, file, assistant_id):
     if "thread" not in st.session_state:
-        st.session_state.thread = create_thread(user_input, file)
+        st.session_state.thread = create_thread()
     create_message(st.session_state.thread, user_input, file)
     with openai.beta.threads.runs.stream(
         thread_id=st.session_state.thread.id,
@@ -135,7 +125,7 @@ def render_chat():
         with st.chat_message(chat["name"]):
             st.markdown(chat["msg"], True)
 
-if "tool_call" not in st.session_state:
+if "tool_calls" not in st.session_state:
     st.session_state.tool_calls = []
 
 if "chat_log" not in st.session_state:
@@ -179,7 +169,6 @@ def main():
             file = handle_uploaded_file(uploaded_file)
         run_stream(user_msg, file, assistant_id)
         st.session_state.in_progress = False
-        st.session_state.tool_call = None
         st.rerun()
 
     render_chat()
