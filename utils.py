@@ -1,14 +1,25 @@
 import streamlit as st
 
-def generate_html_with_tooltips(chat_log):
+def generate_html_with_citations(chat_log):
     html_content = ""
     for chat in chat_log:
         msg = chat["msg"]
         citations = chat.get("citations", [])
-        for citation in citations:
+        citation_texts = []
+        for idx, citation in enumerate(citations):
             citation_text, citation_source = citation
-            tooltip = f'<span class="tooltip">{citation_text}<span class="tooltiptext">{citation_source}</span></span>'
-            msg = msg.replace(citation_text, tooltip)
+            # Color the citation text within the message
+            colored_citation = f'<span style="color:blue;">[{idx + 1}] {citation_text}</span>'
+            msg = msg.replace(citation_text, colored_citation)
+            citation_texts.append(f"[{idx + 1}] {citation_source}")
+        if citation_texts:
+            citation_details = "<br>".join(citation_texts)
+            msg += f"""
+                <details>
+                  <summary>Citations</summary>
+                  <p>{citation_details}</p>
+                </details>
+            """
         html_content += f'<p>{msg}</p>'
     return html_content
 
