@@ -112,9 +112,16 @@ else:
             except Exception as e:
                 st.error(f"An unexpected error occurred: {str(e)}")
 
-            response_content = message['content']
-            st.session_state.messages.append({"role": "assistant", "content": response_content})
-            st.markdown(response_content)
+            # Debugging: Print the entire message object
+            st.write("Message object:", message)
+
+            # Accessing the content from the message object
+            try:
+                response_content = message['content']
+                st.session_state.messages.append({"role": "assistant", "content": response_content})
+                st.markdown(response_content)
+            except KeyError:
+                st.error("The message object does not contain 'content'. Check the structure of the response.")
 
     # File upload
     uploaded_file = st.file_uploader("Upload a file")
@@ -146,9 +153,16 @@ else:
             except Exception as e:
                 st.error(f"An unexpected error occurred: {str(e)}")
 
-            response_content = message['content']
-            st.session_state.messages.append({"role": "assistant", "content": response_content})
-            st.markdown(response_content)
+            # Debugging: Print the entire message object
+            st.write("Message object:", message)
+
+            # Accessing the content from the message object
+            try:
+                response_content = message['content']
+                st.session_state.messages.append({"role": "assistant", "content": response_content})
+                st.markdown(response_content)
+            except KeyError:
+                st.error("The message object does not contain 'content'. Check the structure of the response.")
 
     # Save chat history
     if st.button("Save Chat History"):
