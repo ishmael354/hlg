@@ -13,43 +13,45 @@ def authenticate(username, password):
     return False
 
 # Function to create a thread
-def create_thread(messages):
-    openai.api_key = st.secrets["OPENAI_API_KEY"]
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=messages
+def create_thread(client):
+    thread = client.beta.threads.create()
+    return thread
+
+# Function to add a message to the thread
+def add_message_to_thread(client, thread_id, role, content):
+    message = client.beta.threads.messages.create(
+        thread_id=thread_id,
+        role=role,
+        content=content
     )
-    return response
+    return message
 
-# Function to create a run with instructions and tools
-def create_run(thread_id, assistant_id, model="gpt-4", instructions=None, tools=None):
-    openai.api_key = st.secrets["OPENAI_API_KEY"]
-    data = {
-        "thread_id": thread_id,
-        "assistant_id": assistant_id,
-        "model": model,
-    }
-    if instructions:
-        data["instructions"] = instructions
-    if tools:
-        data["tools"] = tools
+# Function to create a run
+def create_run(client, thread_id, assistant_id):
+    run = client.beta.threads.runs.create(
+        thread_id=thread_id,
+        assistant_id=assistant_id
+    )
+    return run
 
-    response = openai.Completion.create(**data)
-    return response
+# Function to get run steps
+def get_run_steps(client, thread_id, run_id):
+    steps = client.beta.threads.runs.steps.list(
+        thread_id=thread_id,
+        run_id=run_id
+    )
+    return steps
 
-# Function to list messages in a thread
-def list_messages(thread_id):
-    openai.api_key = st.secrets["OPENAI_API_KEY"]
-    response = openai.ChatCompletion.list(
-        model="gpt-4",
+# Function to retrieve message
+def retrieve_message(client, message_id, thread_id):
+    message = client.beta.threads.messages.retrieve(
+        message_id=message_id,
         thread_id=thread_id
     )
-    return response
+    return message
 
-# Function to get the assistant's response
-def get_assistant_response(thread_id):
-    messages = list_messages(thread_id)
-    return messages['choices'][0]['message']['content']
+# Initialize OpenAI client
+client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # Login form
 if "authenticated" not in st.session_state:
@@ -79,6 +81,11 @@ else:
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
+    # Create a thread if not exists
+    if "thread_id" not in st.session_state:
+        thread = create_thread(client)
+        st.session_state["thread_id"] = thread.id
+
     # Display previous messages
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -90,14 +97,24 @@ else:
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # Create thread and run
-        messages = [{"role": "user", "content": prompt}]
-        thread_response = create_thread(messages)
-        thread_id = thread_response['id']
+        # Add message to thread
+        add_message_to_thread(client, st.session_state["thread_id"], "user", prompt)
 
-        run_response = create_run(thread_id, st.session_state["assistant_id"])
-        response = get_assistant_response(thread_id)
-        
+        # Create a run
+        run = create_run(client, st.session_state["thread_id"], st.session_state["assistant_id"])
+
+        # Get run steps
+        steps = get_run_steps(client, st.session_state["thread_id"], run.id)
+
+        # Wait until the run is completed
+        while steps['data'][0]['status'] != "completed":
+            steps = get_run_steps(client, st.session_state["thread_id"], run.id)
+
+        # Retrieve message
+        message_id = steps['data'][0]['step_details']['message_creation']['message_id']
+        message = retrieve_message(client, message_id, st.session_state["thread_id"])
+        response = message['content'][0]['text']['value']
+
         st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})
 
@@ -109,23 +126,24 @@ else:
         with st.chat_message("user"):
             st.markdown(content)
 
-        # Create thread with file attachment and run
-        messages = [{
-            "role": "user",
-            "content": "Create 3 data visualizations based on the trends in this file.",
-            "attachments": [
-                {
-                    "file_id": uploaded_file.id,
-                    "tools": [{"type": "code_interpreter"}]
-                }
-            ]
-        }]
-        thread_response = create_thread(messages)
-        thread_id = thread_response['id']
+        # Add message to thread with file attachment
+        add_message_to_thread(client, st.session_state["thread_id"], "user", content)
 
-        run_response = create_run(thread_id, st.session_state["assistant_id"], tools=[{"type": "code_interpreter"}])
-        response = get_assistant_response(thread_id)
-        
+        # Create a run
+        run = create_run(client, st.session_state["thread_id"], st.session_state["assistant_id"])
+
+        # Get run steps
+        steps = get_run_steps(client, st.session_state["thread_id"], run.id)
+
+        # Wait until the run is completed
+        while steps['data'][0]['status'] != "completed":
+            steps = get_run_steps(client, st.session_state["thread_id"], run.id)
+
+        # Retrieve message
+        message_id = steps['data'][0]['step_details']['message_creation']['message_id']
+        message = retrieve_message(client, message_id, st.session_state["thread_id"])
+        response = message['content'][0]['text']['value']
+
         st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})
 
