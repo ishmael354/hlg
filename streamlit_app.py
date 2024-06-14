@@ -117,11 +117,11 @@ else:
 
             # Accessing the content from the message object
             try:
-                response_content = message['content']
+                response_content = " ".join(block.text.value for block in message.content if hasattr(block, 'text') and hasattr(block.text, 'value'))
                 st.session_state.messages.append({"role": "assistant", "content": response_content})
                 st.markdown(response_content)
-            except KeyError:
-                st.error("The message object does not contain 'content'. Check the structure of the response.")
+            except Exception as e:
+                st.error(f"An error occurred while processing the message content: {str(e)}")
 
     # File upload
     uploaded_file = st.file_uploader("Upload a file")
@@ -158,11 +158,11 @@ else:
 
             # Accessing the content from the message object
             try:
-                response_content = message['content']
+                response_content = " ".join(block.text.value for block in message.content if hasattr(block, 'text') and hasattr(block.text, 'value'))
                 st.session_state.messages.append({"role": "assistant", "content": response_content})
                 st.markdown(response_content)
-            except KeyError:
-                st.error("The message object does not contain 'content'. Check the structure of the response.")
+            except Exception as e:
+                st.error(f"An error occurred while processing the message content: {str(e)}")
 
     # Save chat history
     if st.button("Save Chat History"):
