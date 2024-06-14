@@ -27,16 +27,15 @@ if not st.session_state["authenticated"]:
             if not st.session_state["authenticated"]:
                 st.error("Invalid username or password")
 else:
-
     # Assistant selection
     assistants = {
         "Assistant 1": st.secrets["ASSISTANT1_ID"],
         "Assistant 2": st.secrets["ASSISTANT2_ID"],
         "Assistant 3": st.secrets["ASSISTANT3_ID"],
-        "Assistant 4": st.secrets["ASSISTANT4_ID"]>>>>>>> main
+        "Assistant 4": st.secrets["ASSISTANT4_ID"]
     }
-    selected_model = st.selectbox("Choose an OpenAI Model", list(models.keys()))
-    st.session_state["model_id"] = models[selected_model]
+    selected_assistant = st.selectbox("Choose an Assistant", list(assistants.keys()))
+    st.session_state["assistant_id"] = assistants[selected_assistant]
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -54,7 +53,6 @@ else:
 
         with st.chat_message("assistant"):
             payload = {
-                "model": st.session_state["model_id"],
                 "messages": [
                     {"role": "user", "content": prompt}
                 ]
@@ -64,7 +62,7 @@ else:
                 "Content-Type": "application/json"
             }
             try:
-                response = requests.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers)
+                response = requests.post(f"https://api.openai.com/v1/assistants/{st.session_state['assistant_id']}/completions", json=payload, headers=headers)
                 st.write("Response from OpenAI:", response.text)  # Debugging: Print the response to check its structure
                 response_json = response.json()
 
@@ -88,7 +86,6 @@ else:
 
         with st.chat_message("assistant"):
             payload = {
-                "model": st.session_state["model_id"],
                 "messages": [
                     {"role": "user", "content": content}
                 ]
@@ -98,7 +95,7 @@ else:
                 "Content-Type": "application/json"
             }
             try:
-                response = requests.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers)
+                response = requests.post(f"https://api.openai.com/v1/assistants/{st.session_state['assistant_id']}/completions", json=payload, headers=headers)
                 st.write("Response from OpenAI:", response.text)  # Debugging: Print the response to check its structure
                 response_json = response.json()
 
