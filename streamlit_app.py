@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime
 
 # Title of the app
-st.title("Enhanced ChatGPT-like Clone with Flowise")
+st.title("HLG_PT - Advanced Social Listening Tool")
 
 # Function to authenticate user
 def authenticate(username, password):
@@ -34,7 +34,7 @@ else:
         "Flow 3": st.secrets["FLOW3_ENDPOINT"],
         "Flow 4": st.secrets["FLOW4_ENDPOINT"]
     }
-    selected_flow = st.selectbox("Choose a Flowise Chat Flow", list(flowise_flows.keys()))
+    selected_flow = st.selectbox("Choose a Data Set", list(flowise_flows.keys()))
     st.session_state["flow_endpoint"] = flowise_flows[selected_flow]
 
     if "messages" not in st.session_state:
@@ -46,7 +46,7 @@ else:
             st.markdown(message["content"])
 
     # Chat input
-    if prompt := st.chat_input("What is up?"):
+    if prompt := st.chat_input("What is your query?"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
@@ -55,18 +55,19 @@ else:
             payload = {
                 "question": prompt,
                 "overrideConfig": {
-                    "selectedAssistant": "example",
-                    "disableFileDownload": True,
+                    "selectedAssistant": "Social_Listening_Expert",  # Replace with the correct assistant name
+                    "disableFileDownload": True
                 }
             }
             try:
-                response = requests.post(st.session_state["flow_endpoint"], json=payload).json()
-                st.write("Response from Flowise:", response)  # Debugging: Print the response to check its structure
+                response = requests.post(st.session_state["flow_endpoint"], json=payload)
+                st.write("Response from Flowise:", response.text)  # Debugging: Print the response to check its structure
+                response_json = response.json()
 
                 # Check if the response contains the expected content
-                if "content" in response:
-                    st.markdown(response["content"])
-                    st.session_state.messages.append({"role": "assistant", "content": response["content"]})
+                if "content" in response_json:
+                    st.markdown(response_json["content"])
+                    st.session_state.messages.append({"role": "assistant", "content": response_json["content"]})
                 else:
                     st.error("Unexpected response format from Flowise")
             except Exception as e:
@@ -84,18 +85,19 @@ else:
             payload = {
                 "question": content,
                 "overrideConfig": {
-                    "selectedAssistant": "example",
-                    "disableFileDownload": True,
+                    "selectedAssistant": "Social_Listening_Expert",  # Replace with the correct assistant name
+                    "disableFileDownload": True
                 }
             }
             try:
-                response = requests.post(st.session_state["flow_endpoint"], json=payload).json()
-                st.write("Response from Flowise:", response)  # Debugging: Print the response to check its structure
+                response = requests.post(st.session_state["flow_endpoint"], json=payload)
+                st.write("Response from Flowise:", response.text)  # Debugging: Print the response to check its structure
+                response_json = response.json()
 
                 # Check if the response contains the expected content
-                if "content" in response:
-                    st.markdown(response["content"])
-                    st.session_state.messages.append({"role": "assistant", "content": response["content"]})
+                if "content" in response_json:
+                    st.markdown(response_json["content"])
+                    st.session_state.messages.append({"role": "assistant", "content": response_json["content"]})
                 else:
                     st.error("Unexpected response format from Flowise")
             except Exception as e:
