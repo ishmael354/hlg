@@ -52,12 +52,22 @@ else:
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            response = requests.post(
-                st.session_state["flow_endpoint"],
-                json={"messages": [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]}
-            ).json()
-            st.markdown(response["content"])
-        st.session_state.messages.append({"role": "assistant", "content": response["content"]})
+            payload = {
+                "question": prompt,
+                "overrideConfig": {
+                    "selectedAssistant": "example",
+                    "disableFileDownload": True,
+                }
+            }
+            response = requests.post(st.session_state["flow_endpoint"], json=payload).json()
+            st.write("Response from Flowise:", response)  # Debugging: Print the response to check its structure
+
+            # Check if the response contains the expected content
+            if "content" in response:
+                st.markdown(response["content"])
+                st.session_state.messages.append({"role": "assistant", "content": response["content"]})
+            else:
+                st.error("Unexpected response format from Flowise")
 
     # File upload
     uploaded_file = st.file_uploader("Upload a file")
@@ -68,12 +78,22 @@ else:
             st.markdown(content)
 
         with st.chat_message("assistant"):
-            response = requests.post(
-                st.session_state["flow_endpoint"],
-                json={"messages": [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]}
-            ).json()
-            st.markdown(response["content"])
-        st.session_state.messages.append({"role": "assistant", "content": response["content"]})
+            payload = {
+                "question": content,
+                "overrideConfig": {
+                    "selectedAssistant": "example",
+                    "disableFileDownload": True,
+                }
+            }
+            response = requests.post(st.session_state["flow_endpoint"], json=payload).json()
+            st.write("Response from Flowise:", response)  # Debugging: Print the response to check its structure
+
+            # Check if the response contains the expected content
+            if "content" in response:
+                st.markdown(response["content"])
+                st.session_state.messages.append({"role": "assistant", "content": response["content"]})
+            else:
+                st.error("Unexpected response format from Flowise")
 
     # Save chat history
     if st.button("Save Chat History"):
