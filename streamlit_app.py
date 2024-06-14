@@ -55,11 +55,13 @@ class EventHandler(AssistantEventHandler):
 
     @override
     def on_text_done(self, text):
-        # Clean the text to remove annotations and extract citations
-        clean_text = text.value if hasattr(text, 'annotations') else text
-        citations = [(ann.text, ann.file_citation.text) for ann in text.annotations] if hasattr(text, 'annotations') else []
-        st.session_state.current_markdown.markdown(clean_text, True)
-        st.session_state.chat_log.append({"name": "assistant", "msg": clean_text, "citations": citations})
+        try:
+            clean_text = text.value if hasattr(text, 'annotations') else text
+            citations = [(ann.text, ann.file_citation.text) for ann in getattr(text, 'annotations', [])]
+            st.session_state.current_markdown.markdown(clean_text, True)
+            st.session_state.chat_log.append({"name": "assistant", "msg": clean_text, "citations": citations})
+        except AttributeError as e:
+            st.error(f"Error processing text: {e}")
 
     @override
     def on_tool_call_created(self, tool_call):
