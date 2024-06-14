@@ -5,6 +5,17 @@ from openai import AssistantEventHandler
 import os
 
 # Load secrets from Streamlit
+required_secrets = [
+    "OPENAI_API_KEY", "ASSISTANT_1_ID", "ASSISTANT_2_ID", "ASSISTANT_3_ID", "ASSISTANT_4_ID",
+    "ASSISTANT_1_TITLE", "ASSISTANT_2_TITLE", "ASSISTANT_3_TITLE", "ASSISTANT_4_TITLE"
+]
+
+# Check if all required secrets are available
+missing_secrets = [key for key in required_secrets if key not in st.secrets]
+if missing_secrets:
+    st.error(f"Missing required secrets: {', '.join(missing_secrets)}")
+    st.stop()
+
 openai_api_key = st.secrets["OPENAI_API_KEY"]
 
 # Configure OpenAI client
