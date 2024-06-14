@@ -1,44 +1,49 @@
-import streamlit as st
-import openai
-from typing_extensions import override
-from openai import AssistantEventHandler
 import os
+import openai
+import streamlit as st
+from openai import AssistantEventHandler
+from typing_extensions import override
+from dotenv import load_dotenv
 
-# Load secrets from Streamlit
+# Load environment variables
+load_dotenv()
+
+# Set OpenAI API key
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+# Verify that all secrets are loaded
 required_secrets = [
-    "OPENAI_API_KEY", "ASSISTANT_1_ID", "ASSISTANT_2_ID", "ASSISTANT_3_ID", "ASSISTANT_4_ID",
+    "ASSISTANT_1_ID", "ASSISTANT_2_ID", "ASSISTANT_3_ID", "ASSISTANT_4_ID",
     "ASSISTANT_1_TITLE", "ASSISTANT_2_TITLE", "ASSISTANT_3_TITLE", "ASSISTANT_4_TITLE"
 ]
 
-# Check if all required secrets are available
-missing_secrets = [key for key in required_secrets if key not in st.secrets]
+missing_secrets = [secret for secret in required_secrets if secret not in st.secrets]
+
 if missing_secrets:
     st.error(f"Missing required secrets: {', '.join(missing_secrets)}")
     st.stop()
 
-openai_api_key = st.secrets["OPENAI_API_KEY"]
-
-# Configure OpenAI client
-openai.api_key = openai_api_key
-
-# Configuration for assistants
-assistant_titles = {
+assistants = {
     "assistant_1": st.secrets["ASSISTANT_1_TITLE"],
     "assistant_2": st.secrets["ASSISTANT_2_TITLE"],
     "assistant_3": st.secrets["ASSISTANT_3_TITLE"],
-    "assistant_4": st.secrets["ASSISTANT_4_TITLE"],
+    "assistant_4": st.secrets["ASSISTANT_4_TITLE"]
 }
-assistants = {
+
+assistant_ids = {
     "assistant_1": st.secrets["ASSISTANT_1_ID"],
     "assistant_2": st.secrets["ASSISTANT_2_ID"],
     "assistant_3": st.secrets["ASSISTANT_3_ID"],
-    "assistant_4": st.secrets["ASSISTANT_4_ID"],
+    "assistant_4": st.secrets["ASSISTANT_4_ID"]
 }
 
-# Event handler class
 class EventHandler(AssistantEventHandler):
     @override
-    def on_text_created(self, text) -> None:
+    def on_event(self, event):
+        pass
+
+    @override
+    def on_text_created(self, text):
         st.session_state.current_message = ""
         with st.chat_message("Assistant"):
             st.session_state.current_markdown = st.empty()
@@ -52,7 +57,7 @@ class EventHandler(AssistantEventHandler):
     @override
     def on_text_done(self, text):
         st.session_state.current_markdown.markdown(text, True)
-        st.session_state.chat_log.append({"role": "assistant", "content": text})
+        st.session_state.chat_log.append({"name": "assistant", "msg": text})
 
     @override
     def on_tool_call_created(self, tool_call):
@@ -62,11 +67,20 @@ class EventHandler(AssistantEventHandler):
 
     @override
     def on_tool_call_delta(self, delta, snapshot):
+        if 'current_tool_input_markdown' not in st.session_state:
+            with st.chat_message("Assistant"):
+                st.session_state.current_tool_input_markdown = st.empty()
+
         if delta.type == "code_interpreter":
             if delta.code_interpreter.input:
                 st.session_state.current_tool_input += delta.code_interpreter.input
                 input_code = f"### code interpreter\ninput:\n```python\n{st.session_state.current_tool_input}\n```"
                 st.session_state.current_tool_input_markdown.markdown(input_code, True)
+
+            if delta.code_interpreter.outputs:
+                for output in delta.code_interpreter.outputs:
+                    if output.type == "logs":
+                        pass
 
     @override
     def on_tool_call_done(self, tool_call):
@@ -74,30 +88,41 @@ class EventHandler(AssistantEventHandler):
         if tool_call.type == "code_interpreter":
             input_code = f"### code interpreter\ninput:\n```python\n{tool_call.code_interpreter.input}\n```"
             st.session_state.current_tool_input_markdown.markdown(input_code, True)
-            st.session_state.chat_log.append({"role": "assistant", "content": input_code})
+            st.session_state.chat_log.append({"name": "assistant", "msg": input_code})
             st.session_state.current_tool_input_markdown = None
+            for output in tool_call.code_interpreter.outputs:
+                if output.type == "logs":
+                    output = f"### code interpreter\noutput:\n```\n{output.logs}\n```"
+                    with st.chat_message("Assistant"):
+                        st.markdown(output, True)
+                        st.session_state.chat_log.append({"name": "assistant", "msg": output})
 
-# Function to create a thread
-def create_thread():
-    return openai.beta.threads.create()
+def create_thread(content, file):
+    messages = [
+        {
+            "role": "user",
+            "content": content,
+        }
+    ]
+    if file is not None:
+        messages[0].update({"file_ids": [file.id]})
+    thread = openai.beta.threads.create()
+    return thread
 
-# Function to create a message
-def create_message(thread_id, content):
-    return openai.beta.threads.messages.create(
-        thread_id=thread_id,
-        role="user",
-        content=content
+def create_message(thread, content, file):
+    attachments = []
+    if file is not None:
+        attachments.append(
+            {"file_id": file.id, "tools": [{"type": "code_interpreter"}]}
+        )
+    openai.beta.threads.messages.create(
+        thread_id=thread.id, role="user", content=content, attachments=attachments
     )
 
-# Function to handle file uploads
-def handle_uploaded_file(uploaded_file):
-    return openai.files.create(file=uploaded_file, purpose="assistants")
-
-# Function to run the assistant stream
 def run_stream(user_input, file, assistant_id):
     if "thread" not in st.session_state:
-        st.session_state.thread = create_thread()
-    create_message(st.session_state.thread.id, user_input)
+        st.session_state.thread = create_thread(user_input, file)
+    create_message(st.session_state.thread, user_input, file)
     with openai.beta.threads.runs.stream(
         thread_id=st.session_state.thread.id,
         assistant_id=assistant_id,
@@ -105,14 +130,16 @@ def run_stream(user_input, file, assistant_id):
     ) as stream:
         stream.until_done()
 
-# Function to render chat
+def handle_uploaded_file(uploaded_file):
+    file = openai.files.create(file=uploaded_file, purpose="assistants")
+    return file
+
 def render_chat():
     for chat in st.session_state.chat_log:
-        with st.chat_message(chat["role"]):
-            st.markdown(chat["content"], True)
+        with st.chat_message(chat["name"]):
+            st.markdown(chat["msg"], True)
 
-# App initialization
-if "tool_calls" not in st.session_state:
+if "tool_call" not in st.session_state:
     st.session_state.tool_calls = []
 
 if "chat_log" not in st.session_state:
@@ -124,30 +151,40 @@ if "in_progress" not in st.session_state:
 def disable_form():
     st.session_state.in_progress = True
 
-# Main function
 def main():
-    selected_assistant = st.sidebar.selectbox(
-        "Choose an Assistant",
-        options=list(assistants.keys()),
-        format_func=lambda x: assistant_titles[x]
+    st.title("Assistant Selector")
+    assistant_selection = st.selectbox(
+        "Choose an assistant",
+        list(assistants.keys()),
+        format_func=lambda x: assistants[x]
+    )
+    assistant_id = assistant_ids[assistant_selection]
+
+    user_msg = st.chat_input(
+        "Message", on_submit=disable_form, disabled=st.session_state.in_progress
     )
 
-    st.title(assistant_titles[selected_assistant])
-    user_msg = st.chat_input("Message", on_submit=disable_form, disabled=st.session_state.in_progress)
-
-    uploaded_file = st.sidebar.file_uploader("Upload a file", type=['txt', 'pdf', 'png', 'jpg', 'jpeg', 'csv', 'json', 'geojson', 'xlsx', 'xls'], disabled=st.session_state.in_progress)
+    uploaded_file = st.sidebar.file_uploader(
+        "Upload a file",
+        type=[
+            "txt", "pdf", "png", "jpg", "jpeg", "csv", "json", "geojson", "xlsx", "xls"
+        ],
+        disabled=st.session_state.in_progress,
+    )
 
     if user_msg:
         render_chat()
         with st.chat_message("user"):
             st.markdown(user_msg, True)
-        st.session_state.chat_log.append({"role": "user", "content": user_msg})
+        st.session_state.chat_log.append({"name": "user", "msg": user_msg})
 
-        file = handle_uploaded_file(uploaded_file) if uploaded_file else None
-        run_stream(user_msg, file, assistants[selected_assistant])
+        file = None
+        if uploaded_file is not None:
+            file = handle_uploaded_file(uploaded_file)
+        run_stream(user_msg, file, assistant_id)
         st.session_state.in_progress = False
         st.session_state.tool_call = None
-        st.experimental_rerun()
+        st.rerun()
 
     render_chat()
 
