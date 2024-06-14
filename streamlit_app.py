@@ -7,12 +7,9 @@ from typing_extensions import override
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# Debugging: Print the loaded secrets
-st.write(st.secrets)
-
 # Verify that all secrets are loaded
 required_secrets = [
-    "ASSISTANT_1_ID", "ASSISTANT_2_ID", "ASSISTANT_3_ID", "ASSISTANT_4_ID"
+    "ASSISTANT1_ID", "ASSISTANT2_ID", "ASSISTANT3_ID", "ASSISTANT4_ID"
 ]
 
 missing_secrets = [secret for secret in required_secrets if secret not in st.secrets]
@@ -29,10 +26,10 @@ assistants = {
 }
 
 assistant_ids = {
-    "assistant_1": st.secrets["ASSISTANT_1_ID"],
-    "assistant_2": st.secrets["ASSISTANT_2_ID"],
-    "assistant_3": st.secrets["ASSISTANT_3_ID"],
-    "assistant_4": st.secrets["ASSISTANT_4_ID"]
+    "assistant_1": st.secrets["ASSISTANT1_ID"],
+    "assistant_2": st.secrets["ASSISTANT2_ID"],
+    "assistant_3": st.secrets["ASSISTANT3_ID"],
+    "assistant_4": st.secrets["ASSISTANT4_ID"]
 }
 
 class EventHandler(AssistantEventHandler):
