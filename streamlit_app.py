@@ -38,15 +38,6 @@ class EventHandler(AssistantEventHandler):
                     if output.type == "logs":
                         print(f"\n{output.logs}", flush=True)
 
-# Function to create an assistant
-def create_assistant():
-    return openai.Assistants.create(
-        name="Math Tutor",
-        instructions="You are a personal math tutor. Write and run code to answer math questions.",
-        tools=[{"type": "code_interpreter"}],
-        model="gpt-4o",
-    )
-
 # Function to create a thread
 def create_thread():
     return openai.beta.threads.create()
@@ -105,12 +96,11 @@ else:
             else:
                 thread = st.session_state["thread"]
 
-            assistant = create_assistant()
             message = create_message(thread.id, prompt)
 
             with openai.beta.threads.runs.stream(
                 thread_id=thread.id,
-                assistant_id=assistant.id,
+                assistant_id=st.session_state["assistant_id"],
                 instructions="Please address the user as Jane Doe. The user has a premium account.",
                 event_handler=EventHandler(),
             ) as stream:
