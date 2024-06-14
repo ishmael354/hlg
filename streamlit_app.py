@@ -12,6 +12,15 @@ def authenticate(username, password):
         return True
     return False
 
+# Function to get the assistant's response
+def get_assistant_response(openai, thread_id, run_id):
+    while True:
+        run_status = openai.beta.threads.runs.retrieve(thread_id, run_id)
+        if run_status['status'] == "completed":
+            messages = openai.beta.threads.messages.list(thread_id)
+            return messages['data'][0]['content'][0]['text']['value']
+        st.time.sleep(0.2)  # Wait for 200ms before checking again
+
 # Login form
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
@@ -27,15 +36,15 @@ if not st.session_state["authenticated"]:
             if not st.session_state["authenticated"]:
                 st.error("Invalid username or password")
 else:
-    # Assistant selection
-    assistants = {
+    # Model selection
+    models = {
         "Assistant 1": st.secrets["ASSISTANT1_ID"],
         "Assistant 2": st.secrets["ASSISTANT2_ID"],
         "Assistant 3": st.secrets["ASSISTANT3_ID"],
         "Assistant 4": st.secrets["ASSISTANT4_ID"]
     }
-    selected_assistant = st.selectbox("Choose an Assistant", list(assistants.keys()))
-    st.session_state["assistant_id"] = assistants[selected_assistant]
+    selected_model = st.selectbox("Choose an Assistant", list(models.keys()))
+    st.session_state["assistant_id"] = models[selected_model]
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -52,31 +61,19 @@ else:
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            payload = {
-                "model": st.session_state["assistant_id"],
-                "messages": [
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": prompt}
-                ]
-            }
-            headers = {
-                "Authorization": f"Bearer {st.secrets['OPENAI_API_KEY']}",
-                "Content-Type": "application/json"
-            }
-            try:
-                response = requests.post("https://api.openai.com/v1/completions", json=payload, headers=headers)
-                st.write("Response from OpenAI:", response.text)  # Debugging: Print the response to check its structure
-                response_json = response.json()
+            openai = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+            if not st.session_state.get("thread"):
+                thread = openai.beta.threads.create()
+                st.session_state["thread"] = thread
+            else:
+                thread = st.session_state["thread"]
 
-                # Check if the response contains the expected content
-                if "choices" in response_json and len(response_json["choices"]) > 0:
-                    assistant_response = response_json["choices"][0]["message"]["content"]
-                    st.markdown(assistant_response)
-                    st.session_state.messages.append({"role": "assistant", "content": assistant_response})
-                else:
-                    st.error("Unexpected response format from OpenAI")
-            except Exception as e:
-                st.error(f"Error while fetching response: {e}")
+            openai.beta.threads.messages.create(thread['id'], {"role": "user", "content": prompt})
+            run = openai.beta.threads.runs.create(thread['id'], {"assistant_id": st.session_state["assistant_id"]})
+            response = get_assistant_response(openai, thread['id'], run['id'])
+            
+            st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
 
     # File upload
     uploaded_file = st.file_uploader("Upload a file")
@@ -87,31 +84,19 @@ else:
             st.markdown(content)
 
         with st.chat_message("assistant"):
-            payload = {
-                "model": st.session_state["assistant_id"],
-                "messages": [
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": content}
-                ]
-            }
-            headers = {
-                "Authorization": f"Bearer {st.secrets['OPENAI_API_KEY']}",
-                "Content-Type": "application/json"
-            }
-            try:
-                response = requests.post("https://api.openai.com/v1/completions", json=payload, headers=headers)
-                st.write("Response from OpenAI:", response.text)  # Debugging: Print the response to check its structure
-                response_json = response.json()
+            openai = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+            if not st.session_state.get("thread"):
+                thread = openai.beta.threads.create()
+                st.session_state["thread"] = thread
+            else:
+                thread = st.session_state["thread"]
 
-                # Check if the response contains the expected content
-                if "choices" in response_json and len(response_json["choices"]) > 0:
-                    assistant_response = response_json["choices"][0]["message"]["content"]
-                    st.markdown(assistant_response)
-                    st.session_state.messages.append({"role": "assistant", "content": assistant_response})
-                else:
-                    st.error("Unexpected response format from OpenAI")
-            except Exception as e:
-                st.error(f"Error while fetching response: {e}")
+            openai.beta.threads.messages.create(thread['id'], {"role": "user", "content": content})
+            run = openai.beta.threads.runs.create(thread['id'], {"assistant_id": st.session_state["assistant_id"]})
+            response = get_assistant_response(openai, thread['id'], run['id'])
+            
+            st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
 
     # Save chat history
     if st.button("Save Chat History"):
