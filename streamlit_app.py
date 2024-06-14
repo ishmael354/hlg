@@ -1,3 +1,4 @@
+import streamlit as st
 import subprocess
 import sys
 
@@ -5,12 +6,14 @@ import sys
 def install_packages():
     packages = ['streamlit', 'openai', 'pandas']
     for package in packages:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+        except subprocess.CalledProcessError as e:
+            st.error(f"Failed to install package {package}. Error: {str(e)}")
 
 # Install the packages
 install_packages()
 
-import streamlit as st
 import openai
 import time
 import pandas as pd
