@@ -106,7 +106,6 @@ else:
 
         # Display a loading spinner
         with st.spinner("Thinking..."):
-            # Wait for the run to complete
             while True:
                 steps = get_run_steps(client, st.session_state["thread_id"], run.id)
                 st.write(steps)  # Log the steps to Streamlit interface for debugging
@@ -119,16 +118,18 @@ else:
                     st.write("No data in steps")
                 time.sleep(1)  # Wait for 1 second before checking again
 
-        # Retrieve message
-        if 'data' in steps and steps['data']:
-            message_id = steps['data'][0]['step_details']['message_creation']['message_id']
-            message = retrieve_message(client, message_id, st.session_state["thread_id"])
-            response = message['content'][0]['text']['value']
-
-            st.markdown(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
-        else:
-            st.error("Failed to retrieve steps data")
+            # Retrieve message
+            if 'data' in steps and steps['data']:
+                for step in steps['data']:
+                    if step['status'] == "completed" and step['type'] == "message_creation":
+                        message_id = step['step_details']['message_creation']['message_id']
+                        message = retrieve_message(client, message_id, st.session_state["thread_id"])
+                        response = message['content'][0]['text']['value']
+                        st.markdown(response)
+                        st.session_state.messages.append({"role": "assistant", "content": response})
+                        break
+            else:
+                st.error("Failed to retrieve steps data")
 
     # File upload
     uploaded_file = st.file_uploader("Upload a file")
@@ -146,7 +147,6 @@ else:
 
         # Display a loading spinner
         with st.spinner("Thinking..."):
-            # Wait for the run to complete
             while True:
                 steps = get_run_steps(client, st.session_state["thread_id"], run.id)
                 st.write(steps)  # Log the steps to Streamlit interface for debugging
@@ -159,16 +159,18 @@ else:
                     st.write("No data in steps")
                 time.sleep(1)  # Wait for 1 second before checking again
 
-        # Retrieve message
-        if 'data' in steps and steps['data']:
-            message_id = steps['data'][0]['step_details']['message_creation']['message_id']
-            message = retrieve_message(client, message_id, st.session_state["thread_id"])
-            response = message['content'][0]['text']['value']
-
-            st.markdown(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
-        else:
-            st.error("Failed to retrieve steps data")
+            # Retrieve message
+            if 'data' in steps and steps['data']:
+                for step in steps['data']:
+                    if step['status'] == "completed" and step['type'] == "message_creation":
+                        message_id = step['step_details']['message_creation']['message_id']
+                        message = retrieve_message(client, message_id, st.session_state["thread_id"])
+                        response = message['content'][0]['text']['value']
+                        st.markdown(response)
+                        st.session_state.messages.append({"role": "assistant", "content": response})
+                        break
+            else:
+                st.error("Failed to retrieve steps data")
 
     # Save chat history
     if st.button("Save Chat History"):
