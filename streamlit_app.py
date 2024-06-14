@@ -130,9 +130,9 @@ def handle_uploaded_file(uploaded_file):
 
 def render_chat():
     try:
-        html_content, citation_details = generate_html_with_citations(st.session_state.chat_log)
+        html_content = generate_html_with_citations(st.session_state.chat_log)
         add_tooltip_css()
-        components.html(html_content + citation_details, height=600, scrolling=True)
+        components.html(html_content, height=600, scrolling=True)
     except Exception as e:
         st.error(f"Error rendering chat: {e}")
 
@@ -193,26 +193,39 @@ def main():
         st.title("AI Assistant Chat")
         st.subheader("Ask questions about your dataset")
 
-        st.write("Example queries:")
-        st.write("- What are some trends in this data set?")
-        st.write("- Suggest some visualizations to make based on this data")
-        st.write("- Tell me some unexpected findings in the data set")
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            if st.button("What are some trends in this data set?"):
+                st.session_state.user_msg = "What are some trends in this data set?"
+
+        with col2:
+            if st.button("Suggest some visualizations to make based on this data"):
+                st.session_state.user_msg = "Suggest some visualizations to make based on this data"
+
+        with col3:
+            if st.button("Tell me some unexpected findings in the data set"):
+                st.session_state.user_msg = "Tell me some unexpected findings in the data set"
 
         user_msg = st.chat_input(
             "What is your query?", on_submit=disable_form, disabled=st.session_state.in_progress
         )
 
         if user_msg:
+            st.session_state.user_msg = user_msg
+
+        if "user_msg" in st.session_state:
             render_chat()
             with st.chat_message("user"):
-                st.markdown(user_msg, True)
-            st.session_state.chat_log.append({"name": "user", "msg": user_msg, "citations": []})
+                st.markdown(st.session_state.user_msg, True)
+            st.session_state.chat_log.append({"name": "user", "msg": st.session_state.user_msg, "citations": []})
 
             file = None
             if uploaded_file is not None:
                 file = handle_uploaded_file(uploaded_file)
-            run_stream(user_msg, file, assistant_id)
+            run_stream(st.session_state.user_msg, file, assistant_id)
             st.session_state.in_progress = False
+            st.session_state.user_msg = ""
             st.rerun()
 
         render_chat()
