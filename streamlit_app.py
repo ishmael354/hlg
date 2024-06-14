@@ -4,7 +4,6 @@ import streamlit as st
 from openai import AssistantEventHandler
 from typing_extensions import override
 import pandas as pd
-import streamlit.components.v1 as components
 from utils import generate_html_with_tooltips, add_tooltip_css
 
 # Set OpenAI API key
@@ -130,7 +129,7 @@ def render_chat():
     try:
         html_content = generate_html_with_tooltips(st.session_state.chat_log)
         add_tooltip_css()
-        components.html(html_content, height=600)
+        st.components.html(html_content, height=600)
     except Exception as e:
         st.error(f"Error rendering chat: {e}")
 
