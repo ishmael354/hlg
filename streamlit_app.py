@@ -2,6 +2,7 @@ import streamlit as st
 import openai
 import pandas as pd
 from datetime import datetime
+import time
 
 # Title of the app
 st.title("HLG_PT - Advanced Social Listening Tool")
@@ -103,12 +104,12 @@ else:
         # Create a run
         run = create_run(client, st.session_state["thread_id"], st.session_state["assistant_id"])
 
-        # Get run steps
-        steps = get_run_steps(client, st.session_state["thread_id"], run.id)
-
-        # Wait until the run is completed
-        while steps['data'][0]['status'] != "completed":
+        # Wait for the run to complete
+        while True:
             steps = get_run_steps(client, st.session_state["thread_id"], run.id)
+            if steps['data'] and steps['data'][0]['status'] == "completed":
+                break
+            time.sleep(1)  # Wait for 1 second before checking again
 
         # Retrieve message
         message_id = steps['data'][0]['step_details']['message_creation']['message_id']
@@ -132,12 +133,12 @@ else:
         # Create a run
         run = create_run(client, st.session_state["thread_id"], st.session_state["assistant_id"])
 
-        # Get run steps
-        steps = get_run_steps(client, st.session_state["thread_id"], run.id)
-
-        # Wait until the run is completed
-        while steps['data'][0]['status'] != "completed":
+        # Wait for the run to complete
+        while True:
             steps = get_run_steps(client, st.session_state["thread_id"], run.id)
+            if steps['data'] and steps['data'][0]['status'] == "completed":
+                break
+            time.sleep(1)  # Wait for 1 second before checking again
 
         # Retrieve message
         message_id = steps['data'][0]['step_details']['message_creation']['message_id']
