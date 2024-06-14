@@ -27,15 +27,15 @@ if not st.session_state["authenticated"]:
             if not st.session_state["authenticated"]:
                 st.error("Invalid username or password")
 else:
-    # Flowise chat flow selection
-    flowise_flows = {
-        "Flow 1": st.secrets["FLOW1_ENDPOINT"],
-        "Flow 2": st.secrets["FLOW2_ENDPOINT"],
-        "Flow 3": st.secrets["FLOW3_ENDPOINT"],
-        "Flow 4": st.secrets["FLOW4_ENDPOINT"]
+    # OpenAI Assistant selection
+    assistants = {
+        "Assistant 1": st.secrets["ASSISTANT1_ID"],
+        "Assistant 2": st.secrets["ASSISTANT2_ID"],
+        "Assistant 3": st.secrets["ASSISTANT3_ID"],
+        "Assistant 4": st.secrets["ASSISTANT4_ID"]
     }
-    selected_flow = st.selectbox("Choose a Data Set", list(flowise_flows.keys()))
-    st.session_state["flow_endpoint"] = flowise_flows[selected_flow]
+    selected_assistant = st.selectbox("Choose an Assistant", list(assistants.keys()))
+    st.session_state["assistant_id"] = assistants[selected_assistant]
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -53,24 +53,27 @@ else:
 
         with st.chat_message("assistant"):
             payload = {
-                "question": prompt,
-                "overrideConfig": {
-
-                    "selectedAssistant": "Social_Listening_Expert",  # Replace with the correct assistant name
-                    "disableFileDownload": True
-                }
+                "messages": [
+                    {"role": "system", "content": f"Assistant ID: {st.session_state['assistant_id']}"},
+                    {"role": "user", "content": prompt}
+                ]
+            }
+            headers = {
+                "Authorization": f"Bearer {st.secrets['OPENAI_API_KEY']}",
+                "Content-Type": "application/json"
             }
             try:
-                response = requests.post(st.session_state["flow_endpoint"], json=payload)
-                st.write("Response from Flowise:", response.text)  # Debugging: Print the response to check its structure
+                response = requests.post(f"https://api.openai.com/v1/assistants/{st.session_state['assistant_id']}/completions", json=payload, headers=headers)
+                st.write("Response from OpenAI:", response.text)  # Debugging: Print the response to check its structure
                 response_json = response.json()
 
                 # Check if the response contains the expected content
-                if "content" in response_json:
-                    st.markdown(response_json["content"])
-                    st.session_state.messages.append({"role": "assistant", "content": response_json["content"]})
+                if "choices" in response_json and len(response_json["choices"]) > 0:
+                    assistant_response = response_json["choices"][0]["message"]["content"]
+                    st.markdown(assistant_response)
+                    st.session_state.messages.append({"role": "assistant", "content": assistant_response})
                 else:
-                    st.error("Unexpected response format from Flowise")
+                    st.error("Unexpected response format from OpenAI")
             except Exception as e:
                 st.error(f"Error while fetching response: {e}")
 
@@ -84,25 +87,27 @@ else:
 
         with st.chat_message("assistant"):
             payload = {
-                "question": content,
-                "overrideConfig": {
-
-                    "selectedAssistant": "Social_Listening_Expert",  # Replace with the correct assistant name
-                    "disableFileDownload": True
-
-                }
+                "messages": [
+                    {"role": "system", "content": f"Assistant ID: {st.session_state['assistant_id']}"},
+                    {"role": "user", "content": content}
+                ]
+            }
+            headers = {
+                "Authorization": f"Bearer {st.secrets['OPENAI_API_KEY']}",
+                "Content-Type": "application/json"
             }
             try:
-                response = requests.post(st.session_state["flow_endpoint"], json=payload)
-                st.write("Response from Flowise:", response.text)  # Debugging: Print the response to check its structure
+                response = requests.post(f"https://api.openai.com/v1/assistants/{st.session_state['assistant_id']}/completions", json=payload, headers=headers)
+                st.write("Response from OpenAI:", response.text)  # Debugging: Print the response to check its structure
                 response_json = response.json()
 
                 # Check if the response contains the expected content
-                if "content" in response_json:
-                    st.markdown(response_json["content"])
-                    st.session_state.messages.append({"role": "assistant", "content": response_json["content"]})
+                if "choices" in response_json and len(response_json["choices"]) > 0:
+                    assistant_response = response_json["choices"][0]["message"]["content"]
+                    st.markdown(assistant_response)
+                    st.session_state.messages.append({"role": "assistant", "content": assistant_response})
                 else:
-                    st.error("Unexpected response format from Flowise")
+                    st.error("Unexpected response format from OpenAI")
             except Exception as e:
                 st.error(f"Error while fetching response: {e}")
 
