@@ -126,9 +126,12 @@ def handle_uploaded_file(uploaded_file):
     return file
 
 def render_chat():
-    html_content = generate_html_with_tooltips(st.session_state.chat_log)
-    add_tooltip_css()
-    st.components.v1.html(html_content, height=600)
+    try:
+        html_content = generate_html_with_tooltips(st.session_state.chat_log)
+        add_tooltip_css()
+        st.components.v1.html(html_content, height=600)
+    except Exception as e:
+        st.error(f"Error rendering chat: {e}")
 
 def download_chat_as_csv():
     df = pd.DataFrame(st.session_state.chat_log)
