@@ -1,19 +1,4 @@
 import streamlit as st
-import subprocess
-import sys
-
-# Function to install packages
-def install_packages():
-    packages = ['streamlit', 'openai', 'pandas']
-    for package in packages:
-        try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-        except subprocess.CalledProcessError as e:
-            st.error(f"Failed to install package {package}. Error: {str(e)}")
-
-# Install the packages
-install_packages()
-
 import openai
 import time
 import pandas as pd
@@ -159,10 +144,3 @@ else:
     if st.button("Log Out"):
         st.session_state["authenticated"] = False
         st.session_state.messages = []
-
-# Function to get installed packages
-def get_installed_packages():
-    return subprocess.run([sys.executable, "-m", "pip", "freeze"], capture_output=True, text=True).stdout
-
-# Display installed packages for debugging
-st.text_area("Installed Packages", get_installed_packages())
