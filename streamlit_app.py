@@ -3,10 +3,6 @@ import openai
 import streamlit as st
 from openai import AssistantEventHandler
 from typing_extensions import override
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
 
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
