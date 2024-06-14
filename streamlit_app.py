@@ -1,9 +1,7 @@
 import streamlit as st
 import openai
-import time
-from typing_extensions import override
-from openai import AssistantEventHandler
 import os
+import time
 
 # Initialize OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -16,12 +14,10 @@ def authenticate(username, password):
     return username == st.secrets["USERNAME"] and password == st.secrets["PASSWORD"]
 
 # Event handler for streaming
-class EventHandler(AssistantEventHandler):
-    @override
+class EventHandler(openai.AssistantEventHandler):
     def on_text_created(self, text) -> None:
         print(f"\nassistant > ", end="", flush=True)
       
-    @override
     def on_text_delta(self, delta, snapshot):
         print(delta.value, end="", flush=True)
       
@@ -49,7 +45,7 @@ def create_thread():
 # Function to create a message
 def create_message(thread_id, content, file_ids=None):
     try:
-        return openai.Thread.create_message(thread_id, {"role": "user", "content": content, "file_ids": file_ids})
+        return openai.ThreadMessage.create(thread_id, {"role": "user", "content": content, "file_ids": file_ids})
     except openai.OpenAIError as e:
         st.error(f"API error: {str(e)}")
         st.stop()
@@ -57,7 +53,7 @@ def create_message(thread_id, content, file_ids=None):
 # Function to create a run
 def create_run(thread_id, assistant_id):
     try:
-        return openai.Thread.create_run(thread_id, {"assistant_id": assistant_id})
+        return openai.ThreadRun.create(thread_id, {"assistant_id": assistant_id})
     except openai.OpenAIError as e:
         st.error(f"API error: {str(e)}")
         st.stop()
@@ -65,7 +61,7 @@ def create_run(thread_id, assistant_id):
 # Function to get the assistant's response
 def get_assistant_response(thread_id, run_id):
     try:
-        with openai.Thread.stream(thread_id=thread_id, run_id=run_id, event_handler=EventHandler()) as stream:
+        with openai.ThreadRun.stream(thread_id=thread_id, run_id=run_id, event_handler=EventHandler()) as stream:
             stream.until_done()
     except openai.OpenAIError as e:
         st.error(f"API error: {str(e)}")
