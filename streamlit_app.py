@@ -1,7 +1,8 @@
 import streamlit as st
 import openai
 import os
-import time
+import pandas as pd
+from datetime import datetime
 from typing_extensions import override
 from openai import AssistantEventHandler
 
@@ -98,13 +99,18 @@ else:
 
             message = create_message(thread.id, prompt)
 
-            with openai.beta.threads.runs.stream(
-                thread_id=thread.id,
-                assistant_id=st.session_state["assistant_id"],
-                instructions="Please address the user as Jane Doe. The user has a premium account.",
-                event_handler=EventHandler(),
-            ) as stream:
-                stream.until_done()
+            try:
+                with openai.beta.threads.runs.stream(
+                    thread_id=thread.id,
+                    assistant_id=st.session_state["assistant_id"],
+                    instructions="Please address the user as Jane Doe. The user has a premium account.",
+                    event_handler=EventHandler(),
+                ) as stream:
+                    stream.until_done()
+            except BrokenPipeError:
+                st.error("The connection was closed prematurely. Please try again.")
+            except Exception as e:
+                st.error(f"An unexpected error occurred: {str(e)}")
 
             response_content = message['content']
             st.session_state.messages.append({"role": "assistant", "content": response_content})
@@ -127,13 +133,18 @@ else:
 
             message = create_message(thread.id, content)
 
-            with openai.beta.threads.runs.stream(
-                thread_id=thread.id,
-                assistant_id=st.session_state["assistant_id"],
-                instructions="Please address the user as Jane Doe. The user has a premium account.",
-                event_handler=EventHandler(),
-            ) as stream:
-                stream.until_done()
+            try:
+                with openai.beta.threads.runs.stream(
+                    thread_id=thread.id,
+                    assistant_id=st.session_state["assistant_id"],
+                    instructions="Please address the user as Jane Doe. The user has a premium account.",
+                    event_handler=EventHandler(),
+                ) as stream:
+                    stream.until_done()
+            except BrokenPipeError:
+                st.error("The connection was closed prematurely. Please try again.")
+            except Exception as e:
+                st.error(f"An unexpected error occurred: {str(e)}")
 
             response_content = message['content']
             st.session_state.messages.append({"role": "assistant", "content": response_content})
