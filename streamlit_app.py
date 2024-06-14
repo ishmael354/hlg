@@ -1,8 +1,8 @@
 import streamlit as st
 import openai
 import time
-import json
-import os
+import pandas as pd
+from datetime import datetime
 
 # Initialize OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -145,7 +145,10 @@ else:
         st.session_state["authenticated"] = False
         st.session_state.messages = []
 
-# Run the Streamlit app
-if __name__ == "__main__":
-    import os
-    os.system("streamlit run main.py")
+# Function to get installed packages
+def get_installed_packages():
+    import subprocess
+    return subprocess.run(["pip", "freeze"], capture_output=True, text=True).stdout
+
+# Display installed packages for debugging
+st.text_area("Installed Packages", get_installed_packages())
