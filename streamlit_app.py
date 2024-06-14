@@ -1,40 +1,92 @@
-import altair as alt
-import numpy as np
-import pandas as pd
 import streamlit as st
+import requests
+import pandas as pd
+from datetime import datetime
 
-"""
-# Welcome to Streamlit!
+# Title of the app
+st.title("Enhanced ChatGPT-like Clone with Flowise")
 
-Edit `/streamlit_app.py` to customize this app to your heart's desire :heart:.
-If you have any questions, checkout our [documentation](https://docs.streamlit.io) and [community
-forums](https://discuss.streamlit.io).
+# Function to authenticate user
+def authenticate(username, password):
+    if username == st.secrets["USERNAME"] and password == st.secrets["PASSWORD"]:
+        return True
+    return False
 
-In the meantime, below is an example of what you can do with just a few lines of code:
-"""
+# Login form
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
 
-num_points = st.slider("Number of points in spiral", 1, 10000, 1100)
-num_turns = st.slider("Number of turns in spiral", 1, 300, 31)
+if not st.session_state["authenticated"]:
+    with st.form("login"):
+        st.write("Log In")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Submit")
+        if submitted:
+            st.session_state["authenticated"] = authenticate(username, password)
+            if not st.session_state["authenticated"]:
+                st.error("Invalid username or password")
+else:
+    # Flowise chat flow selection
+    flowise_flows = {
+        "Flow 1": st.secrets["FLOW1_ENDPOINT"],
+        "Flow 2": st.secrets["FLOW2_ENDPOINT"],
+        "Flow 3": st.secrets["FLOW3_ENDPOINT"],
+        "Flow 4": st.secrets["FLOW4_ENDPOINT"]
+    }
+    selected_flow = st.selectbox("Choose a Flowise Chat Flow", list(flowise_flows.keys()))
+    st.session_state["flow_endpoint"] = flowise_flows[selected_flow]
 
-indices = np.linspace(0, 1, num_points)
-theta = 2 * np.pi * num_turns * indices
-radius = indices
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-x = radius * np.cos(theta)
-y = radius * np.sin(theta)
+    # Display previous messages
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-df = pd.DataFrame({
-    "x": x,
-    "y": y,
-    "idx": indices,
-    "rand": np.random.randn(num_points),
-})
+    # Chat input
+    if prompt := st.chat_input("What is up?"):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
 
-st.altair_chart(alt.Chart(df, height=700, width=700)
-    .mark_point(filled=True)
-    .encode(
-        x=alt.X("x", axis=None),
-        y=alt.Y("y", axis=None),
-        color=alt.Color("idx", legend=None, scale=alt.Scale()),
-        size=alt.Size("rand", legend=None, scale=alt.Scale(range=[1, 150])),
-    ))
+        with st.chat_message("assistant"):
+            response = requests.post(
+                st.session_state["flow_endpoint"],
+                json={"messages": [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]}
+            ).json()
+            st.markdown(response["content"])
+        st.session_state.messages.append({"role": "assistant", "content": response["content"]})
+
+    # File upload
+    uploaded_file = st.file_uploader("Upload a file")
+    if uploaded_file:
+        content = uploaded_file.read().decode("utf-8")
+        st.session_state.messages.append({"role": "user", "content": content})
+        with st.chat_message("user"):
+            st.markdown(content)
+
+        with st.chat_message("assistant"):
+            response = requests.post(
+                st.session_state["flow_endpoint"],
+                json={"messages": [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]}
+            ).json()
+            st.markdown(response["content"])
+        st.session_state.messages.append({"role": "assistant", "content": response["content"]})
+
+    # Save chat history
+    if st.button("Save Chat History"):
+        chat_df = pd.DataFrame(st.session_state.messages)
+        chat_df.to_csv(f"chat_history_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv")
+        st.success("Chat history saved!")
+
+    # Log out
+    if st.button("Log Out"):
+        st.session_state["authenticated"] = False
+        st.session_state.messages = []
+
+# Run the Streamlit app
+if __name__ == "__main__":
+    import os
+    os.system("streamlit run main.py")
