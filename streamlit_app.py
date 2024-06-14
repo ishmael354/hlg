@@ -4,7 +4,6 @@ import streamlit as st
 from openai import AssistantEventHandler
 from typing_extensions import override
 import pandas as pd
-from io import StringIO
 
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -56,9 +55,9 @@ class EventHandler(AssistantEventHandler):
     def on_text_done(self, text):
         # Clean the text to remove annotations and extract citations
         clean_text = text.value if hasattr(text, 'annotations') else text
-        citations = [ann.text for ann in text.annotations] if hasattr(text, 'annotations') else []
+        citations = [(ann.text, ann.file_citation.text) for ann in text.annotations] if hasattr(text, 'annotations') else []
         st.session_state.current_markdown.markdown(clean_text, True)
-        st.session_state.chat_log.append({"name": "assistant", "msg": clean_text, "citations": ", ".join(citations)})
+        st.session_state.chat_log.append({"name": "assistant", "msg": clean_text, "citations": citations})
 
     @override
     def on_tool_call_created(self, tool_call):
@@ -126,14 +125,70 @@ def handle_uploaded_file(uploaded_file):
     return file
 
 def render_chat():
-    for chat in st.session_state.chat_log:
-        with st.chat_message(chat["name"]):
-            st.markdown(chat["msg"], True)
+    html_content = generate_html_with_tooltips(st.session_state.chat_log)
+    add_tooltip_css()
+    st.components.v1.html(html_content, height=600)
 
 def download_chat_as_csv():
     df = pd.DataFrame(st.session_state.chat_log)
     csv = df.to_csv(index=False)
     st.download_button(label="Download Chat as CSV", data=csv, file_name='chat_log.csv', mime='text/csv')
+
+def generate_html_with_tooltips(chat_log):
+    html_content = ""
+    for chat in chat_log:
+        if chat["name"] == "assistant" and chat["citations"]:
+            msg_with_tooltips = chat["msg"]
+            for citation, source_text in chat["citations"]:
+                msg_with_tooltips = msg_with_tooltips.replace(
+                    citation,
+                    f'<span class="tooltip">{citation}<span class="tooltiptext">{source_text}</span></span>'
+                )
+            html_content += f'<div class="chat-message assistant">{msg_with_tooltips}</div>'
+        else:
+            html_content += f'<div class="chat-message {chat["name"]}">{chat["msg"]}</div>'
+    return html_content
+
+def add_tooltip_css():
+    tooltip_css = """
+    <style>
+    .tooltip {
+        position: relative;
+        display: inline-block;
+        border-bottom: 1px dotted black;
+    }
+    .tooltip .tooltiptext {
+        visibility: hidden;
+        width: 120px;
+        background-color: black;
+        color: #fff;
+        text-align: center;
+        border-radius: 5px;
+        padding: 5px 0;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%; /* Position the tooltip above the text */
+        left: 50%;
+        margin-left: -60px;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    .tooltip:hover .tooltiptext {
+        visibility: visible;
+        opacity: 1;
+    }
+    .chat-message {
+        margin: 10px 0;
+    }
+    .chat-message.user {
+        color: blue;
+    }
+    .chat-message.assistant {
+        color: green;
+    }
+    </style>
+    """
+    st.markdown(tooltip_css, unsafe_allow_html=True)
 
 if "tool_calls" not in st.session_state:
     st.session_state.tool_calls = []
@@ -189,17 +244,9 @@ def main():
             render_chat()
             with st.chat_message("user"):
                 st.markdown(user_msg, True)
-            st.session_state.chat_log.append({"name": "user", "msg": user_msg, "citations": ""})
+            st.session_state.chat_log.append({"name": "user", "msg": user_msg, "citations": []})
 
             file = None
             if uploaded_file is not None:
                 file = handle_uploaded_file(uploaded_file)
-            run_stream(user_msg, file, assistant_id)
-            st.session_state.in_progress = False
-            st.rerun()
-
-        render_chat()
-        download_chat_as_csv()
-
-if __name__ == "__main__":
-    main()
+            run_stream(user_msg, file
