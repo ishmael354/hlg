@@ -107,17 +107,21 @@ else:
         # Wait for the run to complete
         while True:
             steps = get_run_steps(client, st.session_state["thread_id"], run.id)
-            if steps['data'] and steps['data'][0]['status'] == "completed":
-                break
+            if 'data' in steps and steps['data']:
+                if steps['data'][0]['status'] == "completed":
+                    break
             time.sleep(1)  # Wait for 1 second before checking again
 
         # Retrieve message
-        message_id = steps['data'][0]['step_details']['message_creation']['message_id']
-        message = retrieve_message(client, message_id, st.session_state["thread_id"])
-        response = message['content'][0]['text']['value']
+        if 'data' in steps and steps['data']:
+            message_id = steps['data'][0]['step_details']['message_creation']['message_id']
+            message = retrieve_message(client, message_id, st.session_state["thread_id"])
+            response = message['content'][0]['text']['value']
 
-        st.markdown(response)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+            st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
+        else:
+            st.error("Failed to retrieve steps data")
 
     # File upload
     uploaded_file = st.file_uploader("Upload a file")
@@ -136,17 +140,21 @@ else:
         # Wait for the run to complete
         while True:
             steps = get_run_steps(client, st.session_state["thread_id"], run.id)
-            if steps['data'] and steps['data'][0]['status'] == "completed":
-                break
+            if 'data' in steps and steps['data']:
+                if steps['data'][0]['status'] == "completed":
+                    break
             time.sleep(1)  # Wait for 1 second before checking again
 
         # Retrieve message
-        message_id = steps['data'][0]['step_details']['message_creation']['message_id']
-        message = retrieve_message(client, message_id, st.session_state["thread_id"])
-        response = message['content'][0]['text']['value']
+        if 'data' in steps and steps['data']:
+            message_id = steps['data'][0]['step_details']['message_creation']['message_id']
+            message = retrieve_message(client, message_id, st.session_state["thread_id"])
+            response = message['content'][0]['text']['value']
 
-        st.markdown(response)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+            st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
+        else:
+            st.error("Failed to retrieve steps data")
 
     # Save chat history
     if st.button("Save Chat History"):
