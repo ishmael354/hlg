@@ -1,8 +1,10 @@
 import streamlit as st
-import openai
+import requests
 import pandas as pd
 from datetime import datetime
-import time
+import openai
+from openai import AssistantEventHandler
+from typing_extensions import override
 
 # Title of the app
 st.title("HLG_PT - Advanced Social Listening Tool")
@@ -13,46 +15,50 @@ def authenticate(username, password):
         return True
     return False
 
-# Function to create a thread
-def create_thread(client):
-    thread = client.beta.threads.create()
-    return thread
+# Custom event handler for streaming responses
+class StreamlitEventHandler(AssistantEventHandler):
+    def __init__(self, container):
+        self.container = container
+        self.text = ""
 
-# Function to add a message to the thread
-def add_message_to_thread(client, thread_id, role, content):
-    message = client.beta.threads.messages.create(
+    @override
+    def on_text_created(self, text) -> None:
+        self.text = text
+        self.update_container()
+
+    @override
+    def on_text_delta(self, delta, snapshot):
+        self.text += delta.value
+        self.update_container()
+
+    def on_tool_call_created(self, tool_call):
+        self.text += f"\n{tool_call.type}\n"
+        self.update_container()
+
+    def on_tool_call_delta(self, delta, snapshot):
+        if delta.type == 'code_interpreter':
+            if delta.code_interpreter.input:
+                self.text += delta.code_interpreter.input
+                self.update_container()
+            if delta.code_interpreter.outputs:
+                self.text += "\n\noutput >"
+                for output in delta.code_interpreter.outputs:
+                    if output.type == "logs":
+                        self.text += f"\n{output.logs}"
+                        self.update_container()
+
+    def update_container(self):
+        self.container.markdown(self.text)
+
+# Function to get the assistant's response
+def get_assistant_response(openai, thread_id, run_id, container):
+    event_handler = StreamlitEventHandler(container)
+    with openai.Threads.runs.stream(
         thread_id=thread_id,
-        role=role,
-        content=content
-    )
-    return message
-
-# Function to create a run
-def create_run(client, thread_id, assistant_id):
-    run = client.beta.threads.runs.create(
-        thread_id=thread_id,
-        assistant_id=assistant_id
-    )
-    return run
-
-# Function to get run steps
-def get_run_steps(client, thread_id, run_id):
-    steps = client.beta.threads.runs.steps.list(
-        thread_id=thread_id,
-        run_id=run_id
-    )
-    return steps
-
-# Function to retrieve message
-def retrieve_message(client, message_id, thread_id):
-    message = client.beta.threads.messages.retrieve(
-        message_id=message_id,
-        thread_id=thread_id
-    )
-    return message
-
-# Initialize OpenAI client
-client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        assistant_id=st.session_state["assistant_id"],
+        event_handler=event_handler,
+    ) as stream:
+        stream.until_done()
 
 # Login form
 if "authenticated" not in st.session_state:
@@ -82,11 +88,6 @@ else:
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # Create a thread if not exists
-    if "thread_id" not in st.session_state:
-        thread = create_thread(client)
-        st.session_state["thread_id"] = thread.id
-
     # Display previous messages
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -98,37 +99,17 @@ else:
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # Add message to thread
-        add_message_to_thread(client, st.session_state["thread_id"], "user", prompt)
+        with st.chat_message("assistant") as container:
+            openai.api_key = st.secrets["OPENAI_API_KEY"]
+            if not st.session_state.get("thread"):
+                thread = openai.Threads.create()
+                st.session_state["thread"] = thread
+            else:
+                thread = st.session_state["thread"]
 
-        # Create a run
-        run = create_run(client, st.session_state["thread_id"], st.session_state["assistant_id"])
-
-        # Display a loading spinner
-        with st.spinner("Thinking..."):
-            while True:
-                steps = get_run_steps(client, st.session_state["thread_id"], run.id)
-                st.write("Run Steps:", steps)  # Log the steps to Streamlit interface for debugging
-
-                # Check if steps data is available
-                if steps and 'data' in steps and steps['data']:
-                    for step in steps['data']:
-                        st.write(f"Step ID: {step['id']}, Status: {step['status']}, Type: {step['type']}")
-                        if step['status'] == "completed" and step['type'] == "message_creation":
-                            message_id = step['step_details']['message_creation']['message_id']
-                            message = retrieve_message(client, message_id, st.session_state["thread_id"])
-                            response = message['content'][0]['text']['value']
-                            st.markdown(response)
-                            st.session_state.messages.append({"role": "assistant", "content": response})
-                            break
-                        elif step['status'] == "in_progress" and step['type'] == "tool_calls":
-                            st.write("Tool calls in progress...")
-                    else:
-                        st.write("No completed message creation step yet.")
-                else:
-                    st.write("No data in steps")
-
-                time.sleep(1)  # Wait for 1 second before checking again
+            openai.Threads.create_message(thread['id'], {"role": "user", "content": prompt})
+            run = openai.Threads.create_run(thread['id'], {"assistant_id": st.session_state["assistant_id"]})
+            get_assistant_response(openai, thread['id'], run['id'], container)
 
     # File upload
     uploaded_file = st.file_uploader("Upload a file")
@@ -138,37 +119,17 @@ else:
         with st.chat_message("user"):
             st.markdown(content)
 
-        # Add message to thread with file attachment
-        add_message_to_thread(client, st.session_state["thread_id"], "user", content)
+        with st.chat_message("assistant") as container:
+            openai.api_key = st.secrets["OPENAI_API_KEY"]
+            if not st.session_state.get("thread"):
+                thread = openai.Threads.create()
+                st.session_state["thread"] = thread
+            else:
+                thread = st.session_state["thread"]
 
-        # Create a run
-        run = create_run(client, st.session_state["thread_id"], st.session_state["assistant_id"])
-
-        # Display a loading spinner
-        with st.spinner("Thinking..."):
-            while True:
-                steps = get_run_steps(client, st.session_state["thread_id"], run.id)
-                st.write("Run Steps:", steps)  # Log the steps to Streamlit interface for debugging
-
-                # Check if steps data is available
-                if steps and 'data' in steps and steps['data']:
-                    for step in steps['data']:
-                        st.write(f"Step ID: {step['id']}, Status: {step['status']}, Type: {step['type']}")
-                        if step['status'] == "completed" and step['type'] == "message_creation":
-                            message_id = step['step_details']['message_creation']['message_id']
-                            message = retrieve_message(client, message_id, st.session_state["thread_id"])
-                            response = message['content'][0]['text']['value']
-                            st.markdown(response)
-                            st.session_state.messages.append({"role": "assistant", "content": response})
-                            break
-                        elif step['status'] == "in_progress" and step['type'] == "tool_calls":
-                            st.write("Tool calls in progress...")
-                    else:
-                        st.write("No completed message creation step yet.")
-                else:
-                    st.write("No data in steps")
-
-                time.sleep(1)  # Wait for 1 second before checking again
+            openai.Threads.create_message(thread['id'], {"role": "user", "content": content})
+            run = openai.Threads.create_run(thread['id'], {"assistant_id": st.session_state["assistant_id"]})
+            get_assistant_response(openai, thread['id'], run['id'], container)
 
     # Save chat history
     if st.button("Save Chat History"):
