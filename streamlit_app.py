@@ -1,8 +1,7 @@
 import streamlit as st
-import requests
+import openai
 import pandas as pd
 from datetime import datetime
-import openai  # Import the OpenAI package
 
 # Title of the app
 st.title("HLG_PT - Advanced Social Listening Tool")
@@ -13,25 +12,44 @@ def authenticate(username, password):
         return True
     return False
 
-# Function to initiate interaction
-def initiate_interaction(user_message, uploaded_file):
+# Function to create a thread
+def create_thread(messages):
     openai.api_key = st.secrets["OPENAI_API_KEY"]
-    thread = openai.Threads.create()
-    openai.Threads.create_message(thread['id'], {"role": "user", "content": user_message})
-    if uploaded_file:
-        file_content = uploaded_file.read().decode("utf-8")
-        openai.Threads.create_message(thread['id'], {"role": "user", "content": file_content})
-    return thread
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=messages
+    )
+    return response
 
-# Function to trigger assistant
-def trigger_assistant(thread_id, assistant_id):
-    run = openai.Threads.create_run(thread_id, {"assistant_id": assistant_id})
-    return run
+# Function to create a run with instructions and tools
+def create_run(thread_id, assistant_id, model="gpt-4", instructions=None, tools=None):
+    openai.api_key = st.secrets["OPENAI_API_KEY"]
+    data = {
+        "thread_id": thread_id,
+        "assistant_id": assistant_id,
+        "model": model,
+    }
+    if instructions:
+        data["instructions"] = instructions
+    if tools:
+        data["tools"] = tools
 
-# Function to get assistant response
-def get_assistant_response(openai, thread_id):
-    messages = openai.Threads.list_messages(thread_id)
-    return messages['data'][0]['content'][0]['text']['value']
+    response = openai.Completion.create(**data)
+    return response
+
+# Function to list messages in a thread
+def list_messages(thread_id):
+    openai.api_key = st.secrets["OPENAI_API_KEY"]
+    response = openai.ChatCompletion.list(
+        model="gpt-4",
+        thread_id=thread_id
+    )
+    return response
+
+# Function to get the assistant's response
+def get_assistant_response(thread_id):
+    messages = list_messages(thread_id)
+    return messages['choices'][0]['message']['content']
 
 # Login form
 if "authenticated" not in st.session_state:
@@ -72,9 +90,13 @@ else:
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        my_thread = initiate_interaction(prompt, None)
-        run = trigger_assistant(my_thread['id'], st.session_state["assistant_id"])
-        response = get_assistant_response(openai, my_thread['id'])
+        # Create thread and run
+        messages = [{"role": "user", "content": prompt}]
+        thread_response = create_thread(messages)
+        thread_id = thread_response['id']
+
+        run_response = create_run(thread_id, st.session_state["assistant_id"])
+        response = get_assistant_response(thread_id)
         
         st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})
@@ -87,9 +109,22 @@ else:
         with st.chat_message("user"):
             st.markdown(content)
 
-        my_thread = initiate_interaction(content, uploaded_file)
-        run = trigger_assistant(my_thread['id'], st.session_state["assistant_id"])
-        response = get_assistant_response(openai, my_thread['id'])
+        # Create thread with file attachment and run
+        messages = [{
+            "role": "user",
+            "content": "Create 3 data visualizations based on the trends in this file.",
+            "attachments": [
+                {
+                    "file_id": uploaded_file.id,
+                    "tools": [{"type": "code_interpreter"}]
+                }
+            ]
+        }]
+        thread_response = create_thread(messages)
+        thread_id = thread_response['id']
+
+        run_response = create_run(thread_id, st.session_state["assistant_id"], tools=[{"type": "code_interpreter"}])
+        response = get_assistant_response(thread_id)
         
         st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})
