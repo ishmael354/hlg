@@ -17,6 +17,9 @@ def generate_html_with_tooltips(chat_log):
 
 def add_tooltip_css():
     css_file_path = "static/styles.css"
-    with open(css_file_path) as f:
-        css_content = f.read()
-    st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
+    try:
+        with open(css_file_path) as f:
+            css_content = f.read()
+        st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
+    except Exception as e:
+        st.error(f"Error loading CSS file: {e}")
