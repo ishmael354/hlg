@@ -55,6 +55,7 @@ else:
             payload = {
                 "question": prompt,
                 "overrideConfig": {
+
                     "selectedAssistant": "Social_Listening_Expert",  # Replace with the correct assistant name
                     "disableFileDownload": True
                 }
@@ -85,8 +86,10 @@ else:
             payload = {
                 "question": content,
                 "overrideConfig": {
+
                     "selectedAssistant": "Social_Listening_Expert",  # Replace with the correct assistant name
                     "disableFileDownload": True
+
                 }
             }
             try:
