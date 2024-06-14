@@ -3,23 +3,46 @@ import streamlit as st
 def generate_html_with_tooltips(chat_log):
     html_content = ""
     for chat in chat_log:
-        if chat["name"] == "assistant" and chat["citations"]:
-            msg_with_tooltips = chat["msg"]
-            for citation, source_text in chat["citations"]:
-                msg_with_tooltips = msg_with_tooltips.replace(
-                    citation,
-                    f'<span class="tooltip">{citation}<span class="tooltiptext">{source_text}</span></span>'
-                )
-            html_content += f'<div class="chat-message assistant">{msg_with_tooltips}</div>'
-        else:
-            html_content += f'<div class="chat-message {chat["name"]}">{chat["msg"]}</div>'
+        msg = chat["msg"]
+        citations = chat.get("citations", [])
+        for citation in citations:
+            citation_text, citation_source = citation
+            tooltip = f'<span class="tooltip">{citation_text}<span class="tooltiptext">{citation_source}</span></span>'
+            msg = msg.replace(citation_text, tooltip)
+        html_content += f'<p>{msg}</p>'
     return html_content
 
 def add_tooltip_css():
-    css_file_path = "static/styles.css"
-    try:
-        with open(css_file_path) as f:
-            css_content = f.read()
-        st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
-    except Exception as e:
-        st.error(f"Error loading CSS file: {e}")
+    tooltip_css = """
+    <style>
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      cursor: pointer;
+      border-bottom: 1px dotted black;
+    }
+
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: 120px;
+      background-color: black;
+      color: #fff;
+      text-align: center;
+      border-radius: 6px;
+      padding: 5px 0;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%; /* Position the tooltip above the text */
+      left: 50%;
+      margin-left: -60px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+    </style>
+    """
+    st.markdown(tooltip_css, unsafe_allow_html=True)
