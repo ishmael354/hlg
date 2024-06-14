@@ -3,6 +3,8 @@ import openai
 import streamlit as st
 from openai import AssistantEventHandler
 from typing_extensions import override
+import pandas as pd
+from io import StringIO
 
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -52,13 +54,11 @@ class EventHandler(AssistantEventHandler):
 
     @override
     def on_text_done(self, text):
-        # Clean the text to remove annotations
-        if hasattr(text, 'annotations'):
-            clean_text = text.value
-        else:
-            clean_text = text
+        # Clean the text to remove annotations and extract citations
+        clean_text = text.value if hasattr(text, 'annotations') else text
+        citations = [ann.text for ann in text.annotations] if hasattr(text, 'annotations') else []
         st.session_state.current_markdown.markdown(clean_text, True)
-        st.session_state.chat_log.append({"name": "assistant", "msg": clean_text})
+        st.session_state.chat_log.append({"name": "assistant", "msg": clean_text, "citations": ", ".join(citations)})
 
     @override
     def on_tool_call_created(self, tool_call):
@@ -130,6 +130,11 @@ def render_chat():
         with st.chat_message(chat["name"]):
             st.markdown(chat["msg"], True)
 
+def download_chat_as_csv():
+    df = pd.DataFrame(st.session_state.chat_log)
+    csv = df.to_csv(index=False)
+    st.download_button(label="Download Chat as CSV", data=csv, file_name='chat_log.csv', mime='text/csv')
+
 if "tool_calls" not in st.session_state:
     st.session_state.tool_calls = []
 
@@ -184,7 +189,7 @@ def main():
             render_chat()
             with st.chat_message("user"):
                 st.markdown(user_msg, True)
-            st.session_state.chat_log.append({"name": "user", "msg": user_msg})
+            st.session_state.chat_log.append({"name": "user", "msg": user_msg, "citations": ""})
 
             file = None
             if uploaded_file is not None:
@@ -194,6 +199,7 @@ def main():
             st.rerun()
 
         render_chat()
+        download_chat_as_csv()
 
 if __name__ == "__main__":
     main()
