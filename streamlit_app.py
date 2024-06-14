@@ -59,15 +59,18 @@ else:
                     "disableFileDownload": True,
                 }
             }
-            response = requests.post(st.session_state["flow_endpoint"], json=payload).json()
-            st.write("Response from Flowise:", response)  # Debugging: Print the response to check its structure
+            try:
+                response = requests.post(st.session_state["flow_endpoint"], json=payload).json()
+                st.write("Response from Flowise:", response)  # Debugging: Print the response to check its structure
 
-            # Check if the response contains the expected content
-            if "content" in response:
-                st.markdown(response["content"])
-                st.session_state.messages.append({"role": "assistant", "content": response["content"]})
-            else:
-                st.error("Unexpected response format from Flowise")
+                # Check if the response contains the expected content
+                if "content" in response:
+                    st.markdown(response["content"])
+                    st.session_state.messages.append({"role": "assistant", "content": response["content"]})
+                else:
+                    st.error("Unexpected response format from Flowise")
+            except Exception as e:
+                st.error(f"Error while fetching response: {e}")
 
     # File upload
     uploaded_file = st.file_uploader("Upload a file")
@@ -85,15 +88,18 @@ else:
                     "disableFileDownload": True,
                 }
             }
-            response = requests.post(st.session_state["flow_endpoint"], json=payload).json()
-            st.write("Response from Flowise:", response)  # Debugging: Print the response to check its structure
+            try:
+                response = requests.post(st.session_state["flow_endpoint"], json=payload).json()
+                st.write("Response from Flowise:", response)  # Debugging: Print the response to check its structure
 
-            # Check if the response contains the expected content
-            if "content" in response:
-                st.markdown(response["content"])
-                st.session_state.messages.append({"role": "assistant", "content": response["content"]})
-            else:
-                st.error("Unexpected response format from Flowise")
+                # Check if the response contains the expected content
+                if "content" in response:
+                    st.markdown(response["content"])
+                    st.session_state.messages.append({"role": "assistant", "content": response["content"]})
+                else:
+                    st.error("Unexpected response format from Flowise")
+            except Exception as e:
+                st.error(f"Error while fetching response: {e}")
 
     # Save chat history
     if st.button("Save Chat History"):
