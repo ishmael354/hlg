@@ -52,9 +52,9 @@ class EventHandler(AssistantEventHandler):
 
     @override
     def on_text_done(self, text):
-        # Filter out annotations from the text
-        if isinstance(text, dict) and 'value' in text:
-            clean_text = text['value']
+        # Clean the text to remove annotations
+        if hasattr(text, 'annotations'):
+            clean_text = text.value
         else:
             clean_text = text
         st.session_state.current_markdown.markdown(clean_text, True)
