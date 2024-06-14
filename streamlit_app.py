@@ -27,7 +27,7 @@ if not st.session_state["authenticated"]:
             if not st.session_state["authenticated"]:
                 st.error("Invalid username or password")
 else:
-    # OpenAI Assistant selection
+    # Assistant selection
     assistants = {
         "Assistant 1": st.secrets["ASSISTANT1_ID"],
         "Assistant 2": st.secrets["ASSISTANT2_ID"],
@@ -54,7 +54,6 @@ else:
         with st.chat_message("assistant"):
             payload = {
                 "messages": [
-                    {"role": "system", "content": f"Assistant ID: {st.session_state['assistant_id']}"},
                     {"role": "user", "content": prompt}
                 ]
             }
@@ -88,7 +87,6 @@ else:
         with st.chat_message("assistant"):
             payload = {
                 "messages": [
-                    {"role": "system", "content": f"Assistant ID: {st.session_state['assistant_id']}"},
                     {"role": "user", "content": content}
                 ]
             }
