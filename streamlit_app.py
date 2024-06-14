@@ -130,9 +130,9 @@ def handle_uploaded_file(uploaded_file):
 
 def render_chat():
     try:
-        html_content = generate_html_with_citations(st.session_state.chat_log)
+        html_content, citation_details = generate_html_with_citations(st.session_state.chat_log)
         add_tooltip_css()
-        components.html(html_content, height=600, scrolling=True)
+        components.html(html_content + citation_details, height=600, scrolling=True)
     except Exception as e:
         st.error(f"Error rendering chat: {e}")
 
