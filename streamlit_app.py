@@ -27,12 +27,13 @@ if not st.session_state["authenticated"]:
             if not st.session_state["authenticated"]:
                 st.error("Invalid username or password")
 else:
-    # OpenAI model selection
-    models = {
-        "Model 1": st.secrets["ASSISTANT1_ID"],
-        "Model 2": st.secrets["ASSISTANT2_ID"],
-        "Model 3": st.secrets["ASSISTANT3_ID"],
-        "Model 4": st.secrets["ASSISTANT4_ID"]
+
+    # Assistant selection
+    assistants = {
+        "Assistant 1": st.secrets["ASSISTANT1_ID"],
+        "Assistant 2": st.secrets["ASSISTANT2_ID"],
+        "Assistant 3": st.secrets["ASSISTANT3_ID"],
+        "Assistant 4": st.secrets["ASSISTANT4_ID"]>>>>>>> main
     }
     selected_model = st.selectbox("Choose an OpenAI Model", list(models.keys()))
     st.session_state["model_id"] = models[selected_model]
@@ -55,7 +56,6 @@ else:
             payload = {
                 "model": st.session_state["model_id"],
                 "messages": [
-                    {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": prompt}
                 ]
             }
@@ -90,7 +90,6 @@ else:
             payload = {
                 "model": st.session_state["model_id"],
                 "messages": [
-                    {"role": "system", "content": "You are a helpful assistant."},
                     {"role": "user", "content": content}
                 ]
             }
