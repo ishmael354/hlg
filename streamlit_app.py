@@ -1,43 +1,70 @@
 import streamlit as st
 import openai
-import os
-import pandas as pd
-from datetime import datetime
 from typing_extensions import override
 from openai import AssistantEventHandler
+import os
 
-# Initialize OpenAI API key
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Load secrets from Streamlit
+openai_api_key = st.secrets["OPENAI_API_KEY"]
 
-# Title of the app
-st.title("HLG_PT - Advanced Social Listening Tool")
+# Configure OpenAI client
+openai.api_key = openai_api_key
 
-# Function to authenticate user
-def authenticate(username, password):
-    return username == st.secrets["USERNAME"] and password == st.secrets["PASSWORD"]
+# Configuration for assistants
+assistant_titles = {
+    "assistant_1": st.secrets["ASSISTANT_1_TITLE"],
+    "assistant_2": st.secrets["ASSISTANT_2_TITLE"],
+    "assistant_3": st.secrets["ASSISTANT_3_TITLE"],
+    "assistant_4": st.secrets["ASSISTANT_4_TITLE"],
+}
+assistants = {
+    "assistant_1": st.secrets["ASSISTANT_1_ID"],
+    "assistant_2": st.secrets["ASSISTANT_2_ID"],
+    "assistant_3": st.secrets["ASSISTANT_3_ID"],
+    "assistant_4": st.secrets["ASSISTANT_4_ID"],
+}
 
 # Event handler class
 class EventHandler(AssistantEventHandler):
     @override
     def on_text_created(self, text) -> None:
-        print(f"\nassistant > ", end="", flush=True)
+        st.session_state.current_message = ""
+        with st.chat_message("Assistant"):
+            st.session_state.current_markdown = st.empty()
 
     @override
     def on_text_delta(self, delta, snapshot):
-        print(delta.value, end="", flush=True)
+        if snapshot.value:
+            st.session_state.current_message = snapshot.value
+            st.session_state.current_markdown.markdown(st.session_state.current_message, True)
 
+    @override
+    def on_text_done(self, text):
+        st.session_state.current_markdown.markdown(text, True)
+        st.session_state.chat_log.append({"role": "assistant", "content": text})
+
+    @override
     def on_tool_call_created(self, tool_call):
-        print(f"\nassistant > {tool_call.type}\n", flush=True)
+        st.session_state.current_tool_input = ""
+        with st.chat_message("Assistant"):
+            st.session_state.current_tool_input_markdown = st.empty()
 
+    @override
     def on_tool_call_delta(self, delta, snapshot):
-        if delta.type == 'code_interpreter':
+        if delta.type == "code_interpreter":
             if delta.code_interpreter.input:
-                print(delta.code_interpreter.input, end="", flush=True)
-            if delta.code_interpreter.outputs:
-                print(f"\n\noutput >", flush=True)
-                for output in delta.code_interpreter.outputs:
-                    if output.type == "logs":
-                        print(f"\n{output.logs}", flush=True)
+                st.session_state.current_tool_input += delta.code_interpreter.input
+                input_code = f"### code interpreter\ninput:\n```python\n{st.session_state.current_tool_input}\n```"
+                st.session_state.current_tool_input_markdown.markdown(input_code, True)
+
+    @override
+    def on_tool_call_done(self, tool_call):
+        st.session_state.tool_calls.append(tool_call)
+        if tool_call.type == "code_interpreter":
+            input_code = f"### code interpreter\ninput:\n```python\n{tool_call.code_interpreter.input}\n```"
+            st.session_state.current_tool_input_markdown.markdown(input_code, True)
+            st.session_state.chat_log.append({"role": "assistant", "content": input_code})
+            st.session_state.current_tool_input_markdown = None
 
 # Function to create a thread
 def create_thread():
@@ -51,126 +78,67 @@ def create_message(thread_id, content):
         content=content
     )
 
-# Login form
-if "authenticated" not in st.session_state:
-    st.session_state["authenticated"] = False
+# Function to handle file uploads
+def handle_uploaded_file(uploaded_file):
+    return openai.files.create(file=uploaded_file, purpose="assistants")
 
-if not st.session_state["authenticated"]:
-    with st.form("login"):
-        st.write("Log In")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        submitted = st.form_submit_button("Submit")
-        if submitted:
-            st.session_state["authenticated"] = authenticate(username, password)
-            if not st.session_state["authenticated"]:
-                st.error("Invalid username or password")
-else:
-    # Model selection
-    models = {
-        "Assistant 1": st.secrets["ASSISTANT1_ID"],
-        "Assistant 2": st.secrets["ASSISTANT2_ID"],
-        "Assistant 3": st.secrets["ASSISTANT3_ID"],
-        "Assistant 4": st.secrets["ASSISTANT4_ID"]
-    }
-    selected_model = st.selectbox("Choose an Assistant", list(models.keys()))
-    st.session_state["assistant_id"] = models[selected_model]
+# Function to run the assistant stream
+def run_stream(user_input, file, assistant_id):
+    if "thread" not in st.session_state:
+        st.session_state.thread = create_thread()
+    create_message(st.session_state.thread.id, user_input)
+    with openai.beta.threads.runs.stream(
+        thread_id=st.session_state.thread.id,
+        assistant_id=assistant_id,
+        event_handler=EventHandler(),
+    ) as stream:
+        stream.until_done()
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+# Function to render chat
+def render_chat():
+    for chat in st.session_state.chat_log:
+        with st.chat_message(chat["role"]):
+            st.markdown(chat["content"], True)
 
-    # Display previous messages
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+# App initialization
+if "tool_calls" not in st.session_state:
+    st.session_state.tool_calls = []
 
-    # Chat input
-    if prompt := st.chat_input("What is your query?"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
+if "chat_log" not in st.session_state:
+    st.session_state.chat_log = []
+
+if "in_progress" not in st.session_state:
+    st.session_state.in_progress = False
+
+def disable_form():
+    st.session_state.in_progress = True
+
+# Main function
+def main():
+    selected_assistant = st.sidebar.selectbox(
+        "Choose an Assistant",
+        options=list(assistants.keys()),
+        format_func=lambda x: assistant_titles[x]
+    )
+
+    st.title(assistant_titles[selected_assistant])
+    user_msg = st.chat_input("Message", on_submit=disable_form, disabled=st.session_state.in_progress)
+
+    uploaded_file = st.sidebar.file_uploader("Upload a file", type=['txt', 'pdf', 'png', 'jpg', 'jpeg', 'csv', 'json', 'geojson', 'xlsx', 'xls'], disabled=st.session_state.in_progress)
+
+    if user_msg:
+        render_chat()
         with st.chat_message("user"):
-            st.markdown(prompt)
+            st.markdown(user_msg, True)
+        st.session_state.chat_log.append({"role": "user", "content": user_msg})
 
-        with st.chat_message("assistant"):
-            if not st.session_state.get("thread"):
-                thread = create_thread()
-                st.session_state["thread"] = thread
-            else:
-                thread = st.session_state["thread"]
+        file = handle_uploaded_file(uploaded_file) if uploaded_file else None
+        run_stream(user_msg, file, assistants[selected_assistant])
+        st.session_state.in_progress = False
+        st.session_state.tool_call = None
+        st.experimental_rerun()
 
-            message = create_message(thread.id, prompt)
+    render_chat()
 
-            try:
-                with openai.beta.threads.runs.stream(
-                    thread_id=thread.id,
-                    assistant_id=st.session_state["assistant_id"],
-                    instructions="Please address the user as Jane Doe. The user has a premium account.",
-                    event_handler=EventHandler(),
-                ) as stream:
-                    stream.until_done()
-            except BrokenPipeError:
-                st.error("The connection was closed prematurely. Please try again.")
-            except Exception as e:
-                st.error(f"An unexpected error occurred: {str(e)}")
-
-            # Debugging: Print the entire message object
-            st.write("Message object:", message)
-
-            # Accessing the content from the message object
-            try:
-                response_content = " ".join(block.text.value for block in message.content if hasattr(block, 'text') and hasattr(block.text, 'value'))
-                st.session_state.messages.append({"role": "assistant", "content": response_content})
-                st.markdown(response_content)
-            except Exception as e:
-                st.error(f"An error occurred while processing the message content: {str(e)}")
-
-    # File upload
-    uploaded_file = st.file_uploader("Upload a file")
-    if uploaded_file:
-        content = uploaded_file.read().decode("utf-8")
-        st.session_state.messages.append({"role": "user", "content": content})
-        with st.chat_message("user"):
-            st.markdown(content)
-
-        with st.chat_message("assistant"):
-            if not st.session_state.get("thread"):
-                thread = create_thread()
-                st.session_state["thread"] = thread
-            else:
-                thread = st.session_state["thread"]
-
-            message = create_message(thread.id, content)
-
-            try:
-                with openai.beta.threads.runs.stream(
-                    thread_id=thread.id,
-                    assistant_id=st.session_state["assistant_id"],
-                    instructions="Please address the user as Jane Doe. The user has a premium account.",
-                    event_handler=EventHandler(),
-                ) as stream:
-                    stream.until_done()
-            except BrokenPipeError:
-                st.error("The connection was closed prematurely. Please try again.")
-            except Exception as e:
-                st.error(f"An unexpected error occurred: {str(e)}")
-
-            # Debugging: Print the entire message object
-            st.write("Message object:", message)
-
-            # Accessing the content from the message object
-            try:
-                response_content = " ".join(block.text.value for block in message.content if hasattr(block, 'text') and hasattr(block.text, 'value'))
-                st.session_state.messages.append({"role": "assistant", "content": response_content})
-                st.markdown(response_content)
-            except Exception as e:
-                st.error(f"An error occurred while processing the message content: {str(e)}")
-
-    # Save chat history
-    if st.button("Save Chat History"):
-        chat_df = pd.DataFrame(st.session_state.messages)
-        chat_df.to_csv(f"chat_history_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv")
-        st.success("Chat history saved!")
-
-    # Log out
-    if st.button("Log Out"):
-        st.session_state["authenticated"] = False
-        st.session_state.messages = []
+if __name__ == "__main__":
+    main()
