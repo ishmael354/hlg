@@ -2,6 +2,8 @@ import streamlit as st
 import openai
 import os
 import time
+from typing_extensions import override
+from openai import AssistantEventHandler
 
 # Initialize OpenAI API key
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -13,17 +15,19 @@ st.title("HLG_PT - Advanced Social Listening Tool")
 def authenticate(username, password):
     return username == st.secrets["USERNAME"] and password == st.secrets["PASSWORD"]
 
-# Event handler for streaming
-class EventHandler(openai.AssistantEventHandler):
+# Event handler class
+class EventHandler(AssistantEventHandler):
+    @override
     def on_text_created(self, text) -> None:
         print(f"\nassistant > ", end="", flush=True)
-      
+
+    @override
     def on_text_delta(self, delta, snapshot):
         print(delta.value, end="", flush=True)
-      
+
     def on_tool_call_created(self, tool_call):
         print(f"\nassistant > {tool_call.type}\n", flush=True)
-  
+
     def on_tool_call_delta(self, delta, snapshot):
         if delta.type == 'code_interpreter':
             if delta.code_interpreter.input:
@@ -34,38 +38,26 @@ class EventHandler(openai.AssistantEventHandler):
                     if output.type == "logs":
                         print(f"\n{output.logs}", flush=True)
 
+# Function to create an assistant
+def create_assistant():
+    return openai.Assistants.create(
+        name="Math Tutor",
+        instructions="You are a personal math tutor. Write and run code to answer math questions.",
+        tools=[{"type": "code_interpreter"}],
+        model="gpt-4o",
+    )
+
 # Function to create a thread
 def create_thread():
-    try:
-        return openai.Thread.create()
-    except openai.OpenAIError as e:
-        st.error(f"API error: {str(e)}")
-        st.stop()
+    return openai.Threads.create()
 
 # Function to create a message
-def create_message(thread_id, content, file_ids=None):
-    try:
-        return openai.ThreadMessage.create(thread_id, {"role": "user", "content": content, "file_ids": file_ids})
-    except openai.OpenAIError as e:
-        st.error(f"API error: {str(e)}")
-        st.stop()
-
-# Function to create a run
-def create_run(thread_id, assistant_id):
-    try:
-        return openai.ThreadRun.create(thread_id, {"assistant_id": assistant_id})
-    except openai.OpenAIError as e:
-        st.error(f"API error: {str(e)}")
-        st.stop()
-
-# Function to get the assistant's response
-def get_assistant_response(thread_id, run_id):
-    try:
-        with openai.ThreadRun.stream(thread_id=thread_id, run_id=run_id, event_handler=EventHandler()) as stream:
-            stream.until_done()
-    except openai.OpenAIError as e:
-        st.error(f"API error: {str(e)}")
-        st.stop()
+def create_message(thread_id, content):
+    return openai.Threads.messages.create(
+        thread_id=thread_id,
+        role="user",
+        content=content
+    )
 
 # Login form
 if "authenticated" not in st.session_state:
@@ -113,9 +105,20 @@ else:
             else:
                 thread = st.session_state["thread"]
 
-            create_message(thread['id'], prompt)
-            run = create_run(thread['id'], st.session_state["assistant_id"])
-            get_assistant_response(thread['id'], run['id'])
+            assistant = create_assistant()
+            message = create_message(thread.id, prompt)
+
+            with openai.Threads.runs.stream(
+                thread_id=thread.id,
+                assistant_id=assistant.id,
+                instructions="Please address the user as Jane Doe. The user has a premium account.",
+                event_handler=EventHandler(),
+            ) as stream:
+                stream.until_done()
+
+            response_content = message['content']
+            st.session_state.messages.append({"role": "assistant", "content": response_content})
+            st.markdown(response_content)
 
     # File upload
     uploaded_file = st.file_uploader("Upload a file")
@@ -132,9 +135,19 @@ else:
             else:
                 thread = st.session_state["thread"]
 
-            create_message(thread['id'], content)
-            run = create_run(thread['id'], st.session_state["assistant_id"])
-            get_assistant_response(thread['id'], run['id'])
+            message = create_message(thread.id, content)
+
+            with openai.Threads.runs.stream(
+                thread_id=thread.id,
+                assistant_id=st.session_state["assistant_id"],
+                instructions="Please address the user as Jane Doe. The user has a premium account.",
+                event_handler=EventHandler(),
+            ) as stream:
+                stream.until_done()
+
+            response_content = message['content']
+            st.session_state.messages.append({"role": "assistant", "content": response_content})
+            st.markdown(response_content)
 
     # Save chat history
     if st.button("Save Chat History"):
