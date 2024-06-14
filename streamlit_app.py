@@ -139,7 +139,7 @@ def render_chat():
 def download_chat_as_csv():
     df = pd.DataFrame(st.session_state.chat_log)
     csv = df.to_csv(index=False)
-    st.download_button(label="Download Chat as CSV", data=csv, file_name='chat_log.csv', mime='text/csv')
+    return csv
 
 if "tool_calls" not in st.session_state:
     st.session_state.tool_calls = []
@@ -187,7 +187,8 @@ def main():
             disabled=st.session_state.in_progress,
         )
 
-        st.sidebar.button("Download Chat History", on_click=download_chat_as_csv)
+        csv_data = download_chat_as_csv()
+        st.sidebar.download_button(label="Download Chat as CSV", data=csv_data, file_name='chat_log.csv', mime='text/csv')
 
         user_msg = st.chat_input(
             "Message", on_submit=disable_form, disabled=st.session_state.in_progress
