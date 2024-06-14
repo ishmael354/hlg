@@ -8,7 +8,7 @@ def generate_html_with_citations(chat_log):
         citation_texts = []
         for idx, citation in enumerate(citations):
             citation_text, citation_source = citation
-            marker = f'<a href="#citation-{idx + 1}" style="color:blue;">[{idx + 1}]</a>'
+            marker = f'<span style="color:blue; cursor:pointer;" onclick="document.getElementById(\'citation-{idx + 1}\').style.display=\'block\';">[{idx + 1}]</span>'
             msg = msg.replace(citation_text, marker)
             citation_texts.append((idx + 1, citation_source))
         html_content += f'<p>{msg}</p>'
