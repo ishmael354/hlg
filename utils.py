@@ -8,19 +8,12 @@ def generate_html_with_citations(chat_log):
         citation_texts = []
         for idx, citation in enumerate(citations):
             citation_text, citation_source = citation
-            # Color the citation text within the message
-            colored_citation = f'<span style="color:blue;">[{idx + 1}] {citation_text}</span>'
-            msg = msg.replace(citation_text, colored_citation)
-            citation_texts.append(f"[{idx + 1}] {citation_source}")
-        if citation_texts:
-            citation_details = "<br>".join(citation_texts)
-            msg += f"""
-                <details>
-                  <summary>Citations</summary>
-                  <p>{citation_details}</p>
-                </details>
-            """
+            marker = f'<a href="#citation-{idx + 1}" style="color:blue;">[{idx + 1}]</a>'
+            msg = msg.replace(citation_text, marker)
+            citation_texts.append((idx + 1, citation_source))
         html_content += f'<p>{msg}</p>'
+        for idx, source in citation_texts:
+            html_content += f'<p id="citation-{idx}" style="display:none;"><strong>[{idx}]</strong> {source}</p>'
     return html_content
 
 def add_tooltip_css():
