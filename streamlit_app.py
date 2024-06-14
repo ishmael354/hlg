@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import pandas as pd
 from datetime import datetime
-import openai
+import openai  # Import the OpenAI package
 
 # Title of the app
 st.title("HLG_PT - Advanced Social Listening Tool")
