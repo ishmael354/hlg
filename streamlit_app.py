@@ -192,15 +192,17 @@ def main():
 
         render_chat()
 
+        # Create a separate column for citations
         col4 = st.columns(1)
-        col4[0].title("Citations")
-        if st.session_state.citations:
-            for idx, (citation_text, citation_source) in enumerate(st.session_state.citations, 1):
-                if col4[0].button(f"Request citation {idx}", key=f"citation_{idx}"):
-                    request_citation(citation_text)
+        with col4[0]:
+            st.title("Citations")
+            if st.session_state.citations:
+                for idx, (citation_text, citation_source) in enumerate(st.session_state.citations, 1):
+                    if st.button(f"Request citation {idx}", key=f"citation_{idx}"):
+                        request_citation(citation_text)
 
-        if st.session_state.citation_requested:
-            col4[0].write(st.session_state.citation_text)
+            if st.session_state.citation_requested:
+                st.write(st.session_state.citation_text)
 
 if __name__ == "__main__":
     main()
