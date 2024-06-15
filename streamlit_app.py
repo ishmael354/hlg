@@ -10,6 +10,7 @@ from event_handler import EventHandler
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Verify that all secrets are loaded
+required_secrets are loaded
 required_secrets = [
     "ASSISTANT1_ID", "ASSISTANT2_ID", "ASSISTANT3_ID", "ASSISTANT4_ID",
     "USERNAME", "PASSWORD"
