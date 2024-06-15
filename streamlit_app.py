@@ -75,14 +75,6 @@ def download_chat_as_csv():
     csv = df.to_csv(index=False)
     return csv
 
-def request_citation(citation):
-    try:
-        st.session_state.citation_requested = True
-        st.session_state.citation_text = f"Requesting citation for: {citation}"
-        run_stream(f"Can you please return the information cited in the response for \"{citation}\"?", None, st.session_state.assistant_id)
-    except Exception as e:
-        st.error(f"Error requesting citation: {e}")
-
 if "tool_calls" not in st.session_state:
     st.session_state.tool_calls = []
 
@@ -94,15 +86,6 @@ if "in_progress" not in st.session_state:
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
-
-if "citations" not in st.session_state:
-    st.session_state.citations = []
-
-if "citation_requested" not in st.session_state:
-    st.session_state.citation_requested = False
-
-if "citation_text" not in st.session_state:
-    st.session_state.citation_text = ""
 
 def login(username, password):
     return username == st.secrets["USERNAME"] and password == st.secrets["PASSWORD"]
@@ -169,7 +152,7 @@ def main():
             render_chat()
             with st.chat_message("user"):
                 st.markdown(st.session_state.user_msg, True)
-            st.session_state.chat_log.append({"name": "user", "msg": st.session_state.user_msg, "citations": []})
+            st.session_state.chat_log.append({"name": "user", "msg": st.session_state.user_msg})
 
             file = None
             if uploaded_file is not None:
@@ -180,18 +163,6 @@ def main():
             st.rerun()
 
         render_chat()
-
-        # Create a separate column for citations
-        col4 = st.columns([3, 1])
-        with col4[1]:
-            st.title("Citations")
-            if st.session_state.citations:
-                for idx, (citation_text, citation_source) in enumerate(st.session_state.citations, 1):
-                    if st.button(f"Request citation {idx}", key=f"citation_{idx}"):
-                        request_citation(citation_text)
-
-            if st.session_state.citation_requested:
-                st.write(st.session_state.citation_text)
 
 if __name__ == "__main__":
     main()
