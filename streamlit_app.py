@@ -33,12 +33,16 @@ assistant_ids = {
 }
 
 class EventHandler(AssistantEventHandler):
+    def __init__(self):
+        self.current_text = ""
+
     @override
     def on_event(self, event):
         pass
 
     @override
     def on_text_created(self, text):
+        self.current_text = ""
         st.session_state.current_message = ""
         with st.chat_message("Assistant"):
             st.session_state.current_markdown = st.empty()
@@ -46,12 +50,13 @@ class EventHandler(AssistantEventHandler):
     @override
     def on_text_delta(self, delta, snapshot):
         if snapshot.value:
+            self.current_text = snapshot.value
             st.session_state.current_message = snapshot.value
             st.session_state.current_markdown.markdown(st.session_state.current_message, True)
 
     @override
     def on_text_done(self, text):
-        clean_text = re.sub(r'【[^】]+】', '', text)
+        clean_text = re.sub(r'【[^】]+】', '', self.current_text)
         st.session_state.current_markdown.markdown(clean_text, True)
         st.session_state.chat_log.append({"name": "assistant", "msg": clean_text})
 
@@ -120,8 +125,7 @@ def run_stream(user_input, assistant_id):
                 event_handler=EventHandler(),
             ) as stream:
                 for response in stream:
-                    st.session_state.current_message = response.get("content", "")
-                    st.session_state.current_markdown.markdown(st.session_state.current_message, True)
+                    pass
                 stream.until_done()
     except Exception as e:
         st.error(f"Error running stream: {str(e)}")
