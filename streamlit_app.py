@@ -48,18 +48,6 @@ def create_message(thread, content, file):
         thread_id=thread.id, role="user", content=content, attachments=attachments
     )
 
-def run_stream(user_input, file, assistant_id):
-    if "thread" not in st.session_state:
-        st.session_state.thread = create_thread()
-    create_message(st.session_state.thread, user_input, file)
-    with openai.beta.threads.runs.stream(
-        thread_id=st.session_state.thread.id,
-        assistant_id=assistant_id,
-        event_handler=EventHandler(),
-    ) as stream:
-        for message in stream:
-            clean_message_content(message)
-
 def handle_uploaded_file(uploaded_file):
     file = openai.files.create(file=uploaded_file, purpose="assistants")
     return file
@@ -96,11 +84,15 @@ if "in_progress" not in st.session_state:
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
+if "thinking" not in st.session_state:
+    st.session_state.thinking = False
+
 def login(username, password):
     return username == st.secrets["USERNAME"] and password == st.secrets["PASSWORD"]
 
 def disable_form():
     st.session_state.in_progress = True
+    st.session_state.thinking = True
 
 def main():
     if not st.session_state.logged_in:
@@ -138,12 +130,15 @@ def main():
             """
             <style>
             .fixed-header {
-                position: fixed;
+                position: -webkit-sticky;
+                position: sticky;
                 top: 0;
                 width: 100%;
                 background-color: #fff;
                 z-index: 9999;
                 padding-top: 20px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid #ccc;
             }
             .fixed-header .stButton { 
                 display: inline-block; 
@@ -188,10 +183,19 @@ def main():
             file = None
             if uploaded_file is not None:
                 file = handle_uploaded_file(uploaded_file)
-            run_stream(st.session_state.user_msg, file, st.session_state.assistant_id)
+
+            with st.spinner("Thinking..."):
+                thread = create_thread()
+                create_message(thread, st.session_state.user_msg, file)
+                response = openai.beta.threads.runs.create(thread_id=thread.id, assistant_id=st.session_state.assistant_id)
+                for message in response['messages']:
+                    clean_message_content(message)
+                    st.session_state.chat_log.append({"name": "assistant", "msg": message['content'][0]['text']})
+
             st.session_state.in_progress = False
+            st.session_state.thinking = False
             st.session_state.user_msg = ""
-            st.rerun()
+            st.experimental_rerun()
 
         render_chat()
 
