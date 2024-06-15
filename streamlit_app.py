@@ -1,11 +1,10 @@
 import os
 import openai
 import streamlit as st
-from openai import AssistantEventHandler
-from typing_extensions import override
 import pandas as pd
 import streamlit.components.v1 as components
 from utils import generate_html_with_citations, add_tooltip_css
+from event_handler import EventHandler
 
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -36,80 +35,13 @@ assistant_ids = {
     "assistant_4": st.secrets["ASSISTANT4_ID"]
 }
 
-class EventHandler(AssistantEventHandler):
-    @override
-    def on_event(self, event):
-        pass
-
-    @override
-    def on_text_created(self, text):
-        st.session_state.current_message = ""
-        with st.chat_message("Assistant"):
-            st.session_state.current_markdown = st.empty()
-
-    @override
-    def on_text_delta(self, delta, snapshot):
-        if snapshot.value:
-            st.session_state.current_message = snapshot.value
-            st.session_state.current_markdown.markdown(st.session_state.current_message, True)
-
-    @override
-    def on_text_done(self, text):
-        try:
-            clean_text = text.value if hasattr(text, 'annotations') else text
-            citations = [(ann.text, ann.file_citation.text) for ann in getattr(text, 'annotations', [])]
-            citation_numbers = {ann.text: idx + 1 for idx, ann in enumerate(getattr(text, 'annotations', []))}
-            formatted_text = clean_text
-            for citation, number in citation_numbers.items():
-                formatted_text = formatted_text.replace(citation, f"[{number}]")
-            st.session_state.current_markdown.markdown(formatted_text, True)
-            st.session_state.chat_log.append({"name": "assistant", "msg": formatted_text, "citations": citations})
-        except AttributeError as e:
-            st.error(f"Error processing text: {e}")
-
-    @override
-    def on_tool_call_created(self, tool_call):
-        st.session_state.current_tool_input = ""
-        with st.chat_message("Assistant"):
-            st.session_state.current_tool_input_markdown = st.empty()
-
-    @override
-    def on_tool_call_delta(self, delta, snapshot):
-        if 'current_tool_input_markdown' not in st.session_state:
-            with st.chat_message("Assistant"):
-                st.session_state.current_tool_input_markdown = st.empty()
-
-        if delta.type == "code_interpreter":
-            if delta.code_interpreter.input:
-                st.session_state.current_tool_input += delta.code_interpreter.input
-                input_code = f"### code interpreter\ninput:\n```python\n{st.session_state.current_tool_input}\n```"
-                st.session_state.current_tool_input_markdown.markdown(input_code, True)
-
-            if delta.code_interpreter.outputs:
-                for output in delta.code_interpreter.outputs:
-                    if output.type == "logs":
-                        pass
-
-    @override
-    def on_tool_call_done(self, tool_call):
-        st.session_state.tool_calls.append(tool_call)
-        if tool_call.type == "code_interpreter":
-            input_code = f"### code interpreter\ninput:\n```python\n{tool_call.code_interpreter.input}\n```"
-            st.session_state.current_tool_input_markdown.markdown(input_code, True)
-            st.session_state.chat_log.append({"name": "assistant", "msg": input_code})
-            st.session_state.current_tool_input_markdown = None
-            for output in tool_call.code_interpreter.outputs:
-                if output.type == "logs":
-                    output = f"### code interpreter\noutput:\n```\n{output.logs}\n```"
-                    with st.chat_message("Assistant"):
-                        st.markdown(output, True)
-                        st.session_state.chat_log.append({"name": "assistant", "msg": output})
-
 def create_thread():
+    print("Creating thread...")
     thread = openai.beta.threads.create()
     return thread
 
 def create_message(thread, content, file):
+    print("Creating message...")
     attachments = []
     if file is not None:
         attachments.append({"file_id": file.id, "tools": [{"type": "code_interpreter"}]})
@@ -118,6 +50,7 @@ def create_message(thread, content, file):
     )
 
 def run_stream(user_input, file, assistant_id):
+    print("Running stream...")
     if "thread" not in st.session_state:
         st.session_state.thread = create_thread()
     create_message(st.session_state.thread, user_input, file)
@@ -129,11 +62,13 @@ def run_stream(user_input, file, assistant_id):
         stream.until_done()
 
 def handle_uploaded_file(uploaded_file):
+    print("Handling uploaded file...")
     file = openai.files.create(file=uploaded_file, purpose="assistants")
     return file
 
 def render_chat():
     try:
+        print("Rendering chat...")
         html_content = generate_html_with_citations(st.session_state.chat_log)
         add_tooltip_css()
         components.html(html_content, height=600, scrolling=True)
@@ -141,6 +76,7 @@ def render_chat():
         st.error(f"Error rendering chat: {e}")
 
 def download_chat_as_csv():
+    print("Downloading chat as CSV...")
     df = pd.DataFrame(st.session_state.chat_log)
     csv = df.to_csv(index=False)
     return csv
@@ -167,6 +103,7 @@ def disable_form():
     st.session_state.in_progress = True
 
 def main():
+    print("Running main function...")
     if not st.session_state.logged_in:
         st.title("Login")
         username = st.text_input("Username")
@@ -242,5 +179,5 @@ def main():
             for idx, (citation_text, citation_source) in enumerate(st.session_state.citations, 1):
                 st.sidebar.write(f"{idx}. {citation_text}: {citation_source}")
 
-if __name__ == "main":
+if __name__ == "__main__":
     main()
