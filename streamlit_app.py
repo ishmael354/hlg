@@ -1,14 +1,15 @@
 import os
 import openai
 import streamlit as st
-from event_handler import EventHandler
+from openai import AssistantEventHandler
+from typing_extensions import override
 
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# Ensure required secrets are present
+# Verify that all required secrets are loaded
 required_secrets = [
-    "ASSISTANT1_ID", "ASSISTANT2_ID", "ASSISTANT3_ID", "ASSISTANT4_ID"
+    "ASSISTANT_1_ID", "ASSISTANT_2_ID", "ASSISTANT_3_ID", "ASSISTANT_4_ID",
 ]
 
 missing_secrets = [secret for secret in required_secrets if secret not in st.secrets]
@@ -25,101 +26,79 @@ assistants = {
 }
 
 assistant_ids = {
-    "assistant_1": st.secrets["ASSISTANT1_ID"],
-    "assistant_2": st.secrets["ASSISTANT2_ID"],
-    "assistant_3": st.secrets["ASSISTANT3_ID"],
-    "assistant_4": st.secrets["ASSISTANT4_ID"]
+    "assistant_1": st.secrets["ASSISTANT_1_ID"],
+    "assistant_2": st.secrets["ASSISTANT_2_ID"],
+    "assistant_3": st.secrets["ASSISTANT_3_ID"],
+    "assistant_4": st.secrets["ASSISTANT_4_ID"]
 }
 
-def run_stream(user_input, assistant_id):
+def create_thread(content):
+    messages = [
+        {
+            "role": "user",
+            "content": content,
+        }
+    ]
     thread = openai.beta.threads.create()
+    return thread
+
+def create_message(thread, content):
     openai.beta.threads.messages.create(
-        thread_id=thread.id, role="user", content=user_input
+        thread_id=thread.id, role="user", content=content
     )
+
+def run_stream(user_input, assistant_id):
+    if "thread" not in st.session_state:
+        st.session_state.thread = create_thread(user_input)
+    create_message(st.session_state.thread, user_input)
     with openai.beta.threads.runs.stream(
-        thread_id=thread.id,
+        thread_id=st.session_state.thread.id,
         assistant_id=assistant_id,
         event_handler=EventHandler(),
     ) as stream:
         stream.until_done()
 
-def render_chat():
-    for chat in st.session_state.chat_log:
-        with st.chat_message(chat["name"]):
-            st.markdown(chat["msg"], True)
-
-if "chat_log" not in st.session_state:
-    st.session_state.chat_log = []
-
-if "in_progress" not in st.session_state:
-    st.session_state.in_progress = False
-
 def main():
-    st.sidebar.title("Assistant Selector")
+    st.title("AI Assistant Chat")
+    st.markdown("### Ask questions about your dataset")
+
+    sample_queries = ["What are some trends in this data set?", "Suggest some visualizations to make based on this data", "Tell me some unexpected findings in the data set"]
+    cols = st.columns(len(sample_queries))
+
+    for i, query in enumerate(sample_queries):
+        with cols[i]:
+            if st.button(query):
+                st.session_state.user_msg = query
+
     assistant_selection = st.sidebar.selectbox(
         "Choose an assistant",
         list(assistants.keys()),
         format_func=lambda x: assistants[x]
     )
-    assistant_id = assistant_ids[assistant_selection]
+    st.session_state.assistant_id = assistant_ids[assistant_selection]
 
     uploaded_file = st.sidebar.file_uploader(
         "Upload a file",
         type=[
             "txt", "pdf", "png", "jpg", "jpeg", "csv", "json", "geojson", "xlsx", "xls"
-        ],
-        disabled=st.session_state.in_progress,
+        ]
     )
-
-    st.sidebar.button("Download Chat as CSV")
-
-    st.title("AI Assistant Chat")
-    st.header("Ask questions about your dataset")
-
-    sample_queries = [
-        "What are some trends in this data set?",
-        "Suggest some visualizations to make based on this data",
-        "Tell me some unexpected findings in the data set"
-    ]
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button(sample_queries[0]):
-            st.session_state.user_msg = sample_queries[0]
-            st.session_state.in_progress = True
-
-    with col2:
-        if st.button(sample_queries[1]):
-            st.session_state.user_msg = sample_queries[1]
-            st.session_state.in_progress = True
-
-    with col3:
-        if st.button(sample_queries[2]):
-            st.session_state.user_msg = sample_queries[2]
-            st.session_state.in_progress = True
-
-    user_msg = st.chat_input("What is your query?", disabled=st.session_state.in_progress)
-
-    if user_msg:
-        st.session_state.user_msg = user_msg
-        st.session_state.in_progress = True
 
     if "user_msg" in st.session_state:
         render_chat()
         with st.chat_message("user"):
             st.markdown(st.session_state.user_msg, True)
-        st.session_state.chat_log.append({"name": "user", "msg": st.session_state.user_msg, "citations": []})
+        st.session_state.chat_log.append({"name": "user", "msg": st.session_state.user_msg})
 
-        file = None
-        if uploaded_file is not None:
-            file = openai.File.create(file=uploaded_file, purpose="assistants")
-
-        run_stream(st.session_state.user_msg, assistant_id)
+        run_stream(st.session_state.user_msg, st.session_state.assistant_id)
         st.session_state.in_progress = False
         st.session_state.user_msg = ""
         st.rerun()
 
     render_chat()
+
+    if st.button("Download Chat as CSV"):
+        download_chat_as_csv()
 
 if __name__ == "__main__":
     main()
