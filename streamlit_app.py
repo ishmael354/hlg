@@ -219,7 +219,7 @@ def main():
             "What is your query?", on_submit=disable_form, disabled=st.session_state.in_progress
         )
 
- if user_msg:
+     if user_msg:
     st.session_state.user_msg = user_msg
 
 if "user_msg" in st.session_state:
