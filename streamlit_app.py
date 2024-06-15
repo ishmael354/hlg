@@ -8,7 +8,7 @@ import re
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# Verify that all secrets are loaded
+# Ensure required secrets are present
 required_secrets = [
     "ASSISTANT_1_ID", "ASSISTANT_2_ID", "ASSISTANT_3_ID", "ASSISTANT_4_ID",
     "ASSISTANT_1_TITLE", "ASSISTANT_2_TITLE", "ASSISTANT_3_TITLE", "ASSISTANT_4_TITLE"
@@ -180,11 +180,11 @@ def main():
         disabled=st.session_state.in_progress,
     )
 
-    if st.button("Download Chat as CSV"):
+    if st.sidebar.button("Download Chat as CSV"):
         import pandas as pd
         df = pd.DataFrame(st.session_state.chat_log)
         df.to_csv("chat_history.csv", index=False)
-        st.download_button(
+        st.sidebar.download_button(
             label="Download CSV",
             data=df.to_csv().encode('utf-8'),
             file_name='chat_history.csv',
