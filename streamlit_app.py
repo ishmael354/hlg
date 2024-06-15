@@ -109,13 +109,16 @@ def create_message(thread, user_input, file=None):
 def run_stream(user_input, assistant_id):
     if "thread" not in st.session_state:
         st.session_state.thread = openai.beta.threads.create()
-    create_message(st.session_state.thread, user_input)
-    with openai.beta.threads.runs.stream(
-        thread_id=st.session_state.thread.id,
-        assistant_id=assistant_id,
-        event_handler=EventHandler(),
-    ) as stream:
-        stream.until_done()
+    try:
+        create_message(st.session_state.thread, user_input)
+        with openai.beta.threads.runs.stream(
+            thread_id=st.session_state.thread.id,
+            assistant_id=assistant_id,
+            event_handler=EventHandler(),
+        ) as stream:
+            stream.until_done()
+    except Exception as e:
+        st.error(f"Error running stream: {str(e)}")
 
 def handle_uploaded_file(uploaded_file):
     file = openai.files.create(file=uploaded_file, purpose="assistants")
