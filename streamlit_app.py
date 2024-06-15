@@ -58,8 +58,12 @@ class EventHandler(AssistantEventHandler):
         try:
             clean_text = text.value if hasattr(text, 'annotations') else text
             citations = [(ann.text, ann.file_citation.text) for ann in getattr(text, 'annotations', [])]
-            st.session_state.current_markdown.markdown(clean_text, True)
-            st.session_state.chat_log.append({"name": "assistant", "msg": clean_text, "citations": citations})
+            citation_numbers = {ann.text: idx + 1 for idx, ann in enumerate(getattr(text, 'annotations', []))}
+            formatted_text = clean_text
+            for citation, number in citation_numbers.items():
+                formatted_text = formatted_text.replace(citation, f"[{number}]")
+            st.session_state.current_markdown.markdown(formatted_text, True)
+            st.session_state.chat_log.append({"name": "assistant", "msg": formatted_text, "citations": citations})
         except AttributeError as e:
             st.error(f"Error processing text: {e}")
 
@@ -225,19 +229,20 @@ def main():
             st.session_state.chat_log.append({"name": "user", "msg": st.session_state.user_msg, "citations": []})
 
             file = None
-            if uploaded_file is not None:
-                file = handle_uploaded_file(uploaded_file)
-            run_stream(st.session_state.user_msg, file, assistant_id)
-            st.session_state.in_progress = False
-            st.session_state.user_msg = ""
-            st.rerun()
 
-        render_chat()
+        if uploaded_file is not None:
+    file = handle_uploaded_file(uploaded_file)
+run_stream(st.session_state.user_msg, file, assistant_id)
+st.session_state.in_progress = False
+st.session_state.user_msg = ""
+st.rerun()
 
-        st.sidebar.title("Citations")
-        if st.session_state.citations:
-            for idx, (citation_text, citation_source) in enumerate(st.session_state.citations, 1):
-                st.sidebar.write(f"{idx}. {citation_text}: {citation_source}")
+render_chat()
+
+st.sidebar.title("Citations")
+if st.session_state.citations:
+    for idx, (citation_text, citation_source) in enumerate(st.session_state.citations, 1):
+        st.sidebar.write(f"{idx}. {citation_text}: {citation_source}")
 
 if __name__ == "__main__":
     main()
