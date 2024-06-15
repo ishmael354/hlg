@@ -220,7 +220,7 @@ def main():
         )
 
         if user_msg:
-    st.session_state.user_msg = user_msg
+        st.session_state.user_msg = user_msg
 
 if "user_msg" in st.session_state:
     render_chat()
