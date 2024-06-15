@@ -119,6 +119,9 @@ def run_stream(user_input, assistant_id):
                 assistant_id=assistant_id,
                 event_handler=EventHandler(),
             ) as stream:
+                for response in stream:
+                    st.session_state.current_message = response.get("content", "")
+                    st.session_state.current_markdown.markdown(st.session_state.current_message, True)
                 stream.until_done()
     except Exception as e:
         st.error(f"Error running stream: {str(e)}")
