@@ -240,7 +240,7 @@ def main():
         st.sidebar.title("Citations")
         if st.session_state.citations:
 for idx, (citation_text, citation_source) in enumerate(st.session_state.citations, 1):
-st.sidebar.write(f”{idx}. {citation_text}: {citation_source}”)
+st.sidebar.write(f'{idx}. {citation_text}: {citation_source}”)
 
 if name == “main”:
 main()
