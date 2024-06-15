@@ -37,8 +37,7 @@ assistant_ids = {
 }
 
 def create_thread():
-    thread = openai.beta.threads.create()
-    return thread
+    return openai.beta.threads.create()
 
 def create_message(thread, content, file):
     attachments = []
@@ -49,15 +48,13 @@ def create_message(thread, content, file):
     )
 
 def handle_uploaded_file(uploaded_file):
-    file = openai.files.create(file=uploaded_file, purpose="assistants")
-    return file
+    return openai.files.create(file=uploaded_file, purpose="assistants")
 
 def clean_message_content(message):
-    if 'content' in message:
-        for part in message['content']:
-            if 'text' in part:
-                part['text'] = re.sub(r'【[^】]+】', '', part['text'])
-                part['text'] = re.sub(r'sandbox:[^\s]+', '', part['text'])
+    for part in message['content']:
+        if 'text' in part:
+            part['text'] = re.sub(r'【[^】]+】', '', part['text'])
+            part['text'] = re.sub(r'sandbox:[^\s]+', '', part['text'])
 
 def render_chat():
     try:
@@ -69,8 +66,7 @@ def render_chat():
 
 def download_chat_as_csv():
     df = pd.DataFrame(st.session_state.chat_log)
-    csv = df.to_csv(index=False)
-    return csv
+    return df.to_csv(index=False)
 
 if "tool_calls" not in st.session_state:
     st.session_state.tool_calls = []
