@@ -1,6 +1,7 @@
 from openai import AssistantEventHandler
 from typing_extensions import override
 import streamlit as st
+import re
 
 class EventHandler(AssistantEventHandler):
     @override
@@ -16,13 +17,14 @@ class EventHandler(AssistantEventHandler):
     @override
     def on_text_delta(self, delta, snapshot):
         if snapshot.value:
-            st.session_state.current_message = snapshot.value
+            st.session_state.current_message = re.sub(r'【[^】]+】', '', snapshot.value)
             st.session_state.current_markdown.markdown(st.session_state.current_message, True)
 
     @override
     def on_text_done(self, text):
-        st.session_state.current_markdown.markdown(text, True)
-        st.session_state.chat_log.append({"name": "assistant", "msg": text})
+        clean_text = re.sub(r'【[^】]+】', '', text)
+        st.session_state.current_markdown.markdown(clean_text, True)
+        st.session_state.chat_log.append({"name": "assistant", "msg": clean_text})
 
     @override
     def on_tool_call_created(self, tool_call):
