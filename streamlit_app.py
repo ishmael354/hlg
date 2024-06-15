@@ -154,6 +154,9 @@ if "in_progress" not in st.session_state:
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
+if "citations" not in st.session_state:
+    st.session_state.citations = []
+
 def login(username, password):
     return username == st.secrets["USERNAME"] and password == st.secrets["PASSWORD"]
 
@@ -230,6 +233,11 @@ def main():
             st.rerun()
 
         render_chat()
+
+        st.sidebar.title("Citations")
+        if st.session_state.citations:
+            for idx, (citation_text, citation_source) in enumerate(st.session_state.citations, 1):
+                st.sidebar.write(f"{idx}. {citation_text}: {citation_source}")
 
 if __name__ == "__main__":
     main()
