@@ -185,12 +185,19 @@ def main():
                 file = handle_uploaded_file(uploaded_file)
 
             with st.spinner("Thinking..."):
-                thread = create_thread()
-                create_message(thread, st.session_state.user_msg, file)
-                response = openai.beta.threads.runs.create(thread_id=thread.id, assistant_id=st.session_state.assistant_id)
-                for message in response['messages']:
-                    clean_message_content(message)
-                    st.session_state.chat_log.append({"name": "assistant", "msg": message['content'][0]['text']})
+                try:
+                    thread = create_thread()
+                    create_message(thread, st.session_state.user_msg, file)
+                    response = openai.beta.threads.runs.create(thread_id=thread.id, assistant_id=st.session_state.assistant_id)
+                    
+                    if 'messages' in response:
+                        for message in response['messages']:
+                            clean_message_content(message)
+                            st.session_state.chat_log.append({"name": "assistant", "msg": message['content'][0]['text']})
+                    else:
+                        st.error("No messages found in the response.")
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
 
             st.session_state.in_progress = False
             st.session_state.thinking = False
