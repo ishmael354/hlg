@@ -1,6 +1,6 @@
-import streamlit as st
 from openai import AssistantEventHandler
 from typing_extensions import override
+import streamlit as st
 
 class EventHandler(AssistantEventHandler):
     @override
@@ -21,23 +21,8 @@ class EventHandler(AssistantEventHandler):
 
     @override
     def on_text_done(self, text):
-        try:
-            clean_text = text.value
-            citations = []
-            if hasattr(text, 'annotations'):
-                annotations = text.annotations
-                citation_numbers = {ann.text: idx + 1 for idx, ann in enumerate(annotations)}
-                for index, annotation in enumerate(annotations):
-                    clean_text = clean_text.replace(annotation.text, f'[{index + 1}]')
-                    if hasattr(annotation, 'file_citation'):
-                        citations.append((f'[{index + 1}]', f'{annotation.file_citation.quote} from {annotation.file_citation.file_id}'))
-                    elif hasattr(annotation, 'file_path'):
-                        citations.append((f'[{index + 1}]', f'Click <here> to download {annotation.file_path.file_id}'))
-            st.session_state.current_markdown.markdown(clean_text, True)
-            st.session_state.chat_log.append({"name": "assistant", "msg": clean_text, "citations": citations})
-            st.session_state.citations.extend(citations)
-        except AttributeError as e:
-            st.error(f"Error processing text: {e}")
+        st.session_state.current_markdown.markdown(text, True)
+        st.session_state.chat_log.append({"name": "assistant", "msg": text})
 
     @override
     def on_tool_call_created(self, tool_call):
