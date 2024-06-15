@@ -130,6 +130,7 @@ def disable_form():
 def main():
     st.title("AI Assistant Chat")
     st.write("Ask questions about your dataset")
+
     assistant_selection = st.selectbox(
         "Choose an assistant",
         list(assistants.keys()),
@@ -138,7 +139,6 @@ def main():
     assistant_id = assistant_ids[assistant_selection]
 
     st.sidebar.title("Assistant Selector")
-    st.sidebar.selectbox("Choose an assistant", list(assistants.keys()), format_func=lambda x: assistants[x])
     st.sidebar.file_uploader(
         "Upload a file",
         type=["txt", "pdf", "png", "jpg", "jpeg", "csv", "json", "geojson", "xlsx", "xls"]
