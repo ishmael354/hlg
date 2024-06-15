@@ -47,15 +47,21 @@ class EventHandler(AssistantEventHandler):
     @override
     def on_text_delta(self, delta, snapshot):
         if snapshot.value:
-            clean_message = re.sub(r'【[^】]+】', '', snapshot.value)
-            st.session_state.current_message = clean_message
-            st.session_state.current_markdown.markdown(st.session_state.current_message, True)
+            try:
+                clean_message = re.sub(r'【[^】]+】', '', str(snapshot.value))
+                st.session_state.current_message = clean_message
+                st.session_state.current_markdown.markdown(st.session_state.current_message, True)
+            except Exception as e:
+                st.error(f"Error processing text delta: {e}")
 
     @override
     def on_text_done(self, text):
-        clean_text = re.sub(r'【[^】]+】', '', text)
-        st.session_state.current_markdown.markdown(clean_text, True)
-        st.session_state.chat_log.append({"name": "assistant", "msg": clean_text})
+        try:
+            clean_text = re.sub(r'【[^】]+】', '', str(text))
+            st.session_state.current_markdown.markdown(clean_text, True)
+            st.session_state.chat_log.append({"name": "assistant", "msg": clean_text})
+        except Exception as e:
+            st.error(f"Error processing text done: {e}")
 
 def run_stream(user_input, assistant_id):
     thread = openai.beta.threads.create()
