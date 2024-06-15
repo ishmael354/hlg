@@ -85,6 +85,14 @@ def download_chat_as_csv():
     csv = df.to_csv(index=False)
     return csv
 
+def request_citation(citation):
+    try:
+        st.session_state.citation_requested = True
+        st.session_state.citation_text = f"Requesting citation for: {citation}"
+        run_stream(f"Can you please return the information cited in the response for \"{citation}\"?", None, st.session_state.assistant_id)
+    except Exception as e:
+        st.error(f"Error requesting citation: {e}")
+
 if "tool_calls" not in st.session_state:
     st.session_state.tool_calls = []
 
@@ -99,6 +107,12 @@ if "logged_in" not in st.session_state:
 
 if "citations" not in st.session_state:
     st.session_state.citations = []
+
+if "citation_requested" not in st.session_state:
+    st.session_state.citation_requested = False
+
+if "citation_text" not in st.session_state:
+    st.session_state.citation_text = ""
 
 def login(username, password):
     return username == st.secrets["USERNAME"] and password == st.secrets["PASSWORD"]
@@ -125,7 +139,7 @@ def main():
             list(assistants.keys()),
             format_func=lambda x: assistants[x]
         )
-        assistant_id = assistant_ids[assistant_selection]
+        st.session_state.assistant_id = assistant_ids[assistant_selection]
 
         uploaded_file = st.sidebar.file_uploader(
             "Upload a file",
@@ -171,17 +185,22 @@ def main():
             file = None
             if uploaded_file is not None:
                 file = handle_uploaded_file(uploaded_file)
-            run_stream(st.session_state.user_msg, file, assistant_id)
+            run_stream(st.session_state.user_msg, file, st.session_state.assistant_id)
             st.session_state.in_progress = False
             st.session_state.user_msg = ""
             st.rerun()
 
         render_chat()
 
-        st.sidebar.title("Citations")
+        col4 = st.columns(1)
+        col4[0].title("Citations")
         if st.session_state.citations:
             for idx, (citation_text, citation_source) in enumerate(st.session_state.citations, 1):
-                st.sidebar.write(f"{idx}. {citation_text}: {citation_source}")
+                if col4[0].button(f"Request citation {idx}", key=f"citation_{idx}"):
+                    request_citation(citation_text)
+
+        if st.session_state.citation_requested:
+            col4[0].write(st.session_state.citation_text)
 
 if __name__ == "__main__":
     main()
