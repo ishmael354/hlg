@@ -97,12 +97,14 @@ def create_message(thread, user_input, file=None):
     if file:
         return openai.beta.threads.messages.create(
             thread_id=thread.id,
+            role="user",
             content=user_input,
             file_id=file.id
         )
     else:
         return openai.beta.threads.messages.create(
             thread_id=thread.id,
+            role="user",
             content=user_input
         )
 
