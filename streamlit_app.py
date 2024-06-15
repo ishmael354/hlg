@@ -109,6 +109,7 @@ def create_message(thread, content, file):
     attachments = []
     if file is not None:
         attachments.append({"file_id": file.id, "tools": [{"type": "code_interpreter"}]})
+    print(f"Creating message with thread_id: {thread.id}, role: 'user', content: {content}, attachments: {attachments}")  # Debugging line
     openai.beta.threads.messages.create(
         thread_id=thread.id, role="user", content=content, attachments=attachments
     )
