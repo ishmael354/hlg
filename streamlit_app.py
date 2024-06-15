@@ -3,6 +3,7 @@ import streamlit as st
 import re
 from openai import AssistantEventHandler
 from typing_extensions import override
+import time
 
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -60,44 +61,6 @@ class EventHandler(AssistantEventHandler):
         st.session_state.current_markdown.markdown(clean_text, True)
         st.session_state.chat_log.append({"name": "assistant", "msg": clean_text})
 
-    @override
-    def on_tool_call_created(self, tool_call):
-        st.session_state.current_tool_input = ""
-        with st.chat_message("Assistant"):
-            st.session_state.current_tool_input_markdown = st.empty()
-
-    @override
-    def on_tool_call_delta(self, delta, snapshot):
-        if 'current_tool_input_markdown' not in st.session_state:
-            with st.chat_message("Assistant"):
-                st.session_state.current_tool_input_markdown = st.empty()
-
-        if delta.type == "code_interpreter":
-            if delta.code_interpreter.input:
-                st.session_state.current_tool_input += delta.code_interpreter.input
-                input_code = f"### code interpreter\ninput:\n```python\n{st.session_state.current_tool_input}\n```"
-                st.session_state.current_tool_input_markdown.markdown(input_code, True)
-
-            if delta.code_interpreter.outputs:
-                for output in delta.code_interpreter.outputs:
-                    if output.type == "logs":
-                        pass
-
-    @override
-    def on_tool_call_done(self, tool_call):
-        st.session_state.tool_calls.append(tool_call)
-        if tool_call.type == "code_interpreter":
-            input_code = f"### code interpreter\ninput:\n```python\n{tool_call.code_interpreter.input}\n```"
-            st.session_state.current_tool_input_markdown.markdown(input_code, True)
-            st.session_state.chat_log.append({"name": "assistant", "msg": input_code})
-            st.session_state.current_tool_input_markdown = None
-            for output in tool_call.code_interpreter.outputs:
-                if output.type == "logs":
-                    output = f"### code interpreter\noutput:\n```\n{output.logs}\n```"
-                    with st.chat_message("Assistant"):
-                        st.markdown(output, True)
-                        st.session_state.chat_log.append({"name": "assistant", "msg": output})
-
 def create_message(thread, user_input, file=None):
     if file:
         return openai.beta.threads.messages.create(
@@ -118,89 +81,63 @@ def run_stream(user_input, assistant_id):
         st.session_state.thread = openai.beta.threads.create()
     try:
         create_message(st.session_state.thread, user_input)
-        with st.spinner("Processing..."):
-            with openai.beta.threads.runs.stream(
-                thread_id=st.session_state.thread.id,
-                assistant_id=assistant_id,
-                event_handler=EventHandler(),
-            ) as stream:
-                for response in stream:
-                    pass
-                stream.until_done()
+        handler = EventHandler()
+        run = openai.beta.threads.runs.create(thread_id=st.session_state.thread.id, assistant_id=assistant_id)
+        for event in run:
+            handler.handle_event(event)
+            # If an action is required, handle it
+            if event.status == 'requires_action':
+                action_outputs = []
+                for action in event.required_action.submit_tool_outputs.tool_calls:
+                    function_return = handle_tool_call(action)
+                    action_outputs.append(function_return)
+                run = openai.beta.threads.runs.submit_tool_outputs(
+                    thread_id=st.session_state.thread.id,
+                    run_id=run.id,
+                    tool_outputs=action_outputs
+                )
+            time.sleep(0.2) # Sleep and check run status again
     except Exception as e:
         st.error(f"Error running stream: {str(e)}")
 
-def handle_uploaded_file(uploaded_file):
-    file = openai.files.create(file=uploaded_file, purpose="assistants")
-    return file
-
-def render_chat():
-    for chat in st.session_state.chat_log:
-        with st.chat_message(chat["name"]):
-            st.markdown(chat["msg"], True)
-
-if "tool_calls" not in st.session_state:
-    st.session_state.tool_calls = []
-
-if "chat_log" not in st.session_state:
-    st.session_state.chat_log = []
-
-if "in_progress" not in st.session_state:
-    st.session_state.in_progress = False
-
-def disable_form():
-    st.session_state.in_progress = True
+def handle_tool_call(action):
+    function_return = {}
+    args = json.loads(action.function.arguments)
+    match action.function.name:
+        case 'run_command':
+            function_return = {"tool_call_id": action.id, "output": run_command(args['hostname'], args['command'])}
+        case 'print_working_dir_files':
+            path = args.get('path', '')
+            function_return = {"tool_call_id": action.id, "output": print_working_dir_files(path)}
+        case 'read_file':
+            function_return = {"tool_call_id": action.id, "output": read_file(args['path'])}
+        case 'write_file':
+            function_return = {"tool_call_id": action.id, "output": write_file(args['path'], args['contents'])}
+        case _:
+            function_return = {"tool_call_id": action.id, "output": 'Function does not exist'}
+    return function_return
 
 def main():
     st.title("AI Assistant Chat")
-    st.write("Ask questions about your dataset")
+    assistant_id = assistant_ids[st.selectbox("Choose an assistant", list(assistants.keys()))]
+    uploaded_file = st.file_uploader("Upload a file")
 
-    assistant_selection = st.sidebar.selectbox(
-        "Choose an assistant",
-        list(assistants.keys()),
-        format_func=lambda x: assistants[x]
-    )
-    assistant_id = assistant_ids[assistant_selection]
+    if "chat_log" not in st.session_state:
+        st.session_state.chat_log = []
 
-    uploaded_file = st.sidebar.file_uploader(
-        "Upload a file",
-        type=["txt", "pdf", "png", "jpg", "jpeg", "csv", "json", "geojson", "xlsx", "xls"]
-    )
-    if uploaded_file:
-        file = handle_uploaded_file(uploaded_file)
+    st.sidebar.button("Download Chat as CSV", on_click=download_chat_log)
 
-    st.sidebar.button("Download Chat as CSV")
+    for entry in st.session_state.chat_log:
+        st.chat_message(entry["name"]).markdown(entry["msg"])
 
-    user_msg = st.chat_input(
-        "What is your query?", on_submit=disable_form, disabled=st.session_state.in_progress
-    )
-
-    example_prompts = [
-        "What are some trends in this data set?",
-        "Suggest some visualizations to make based on this data",
-        "Tell me some unexpected findings in the data set"
-    ]
-
-    cols = st.columns(len(example_prompts))
-    for idx, prompt in enumerate(example_prompts):
-        if cols[idx].button(prompt):
-            st.session_state.user_msg = prompt
-
+    user_msg = st.text_input("What is your query?")
     if user_msg:
         st.session_state.user_msg = user_msg
+        run_stream(user_msg, assistant_id)
 
-    if "user_msg" in st.session_state:
-        render_chat()
-        with st.chat_message("user"):
-            st.markdown(st.session_state.user_msg, True)
-        st.session_state.chat_log.append({"name": "user", "msg": st.session_state.user_msg})
-
-        run_stream(st.session_state.user_msg, assistant_id)
-        st.session_state.in_progress = False
-        st.session_state.user_msg = ""
-        st.rerun()
-
-    render_chat()
+def download_chat_log():
+    chat_log = st.session_state.chat_log
+    # Your implementation for downloading the chat log
 
 if __name__ == "__main__":
     main()
