@@ -109,7 +109,6 @@ def create_message(thread, user_input, file=None):
 def run_stream(user_input, assistant_id):
     if "thread" not in st.session_state:
         st.session_state.thread = openai.beta.threads.create()
-        create_message(st.session_state.thread, user_input)
     create_message(st.session_state.thread, user_input)
     with openai.beta.threads.runs.stream(
         thread_id=st.session_state.thread.id,
