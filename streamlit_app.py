@@ -219,27 +219,28 @@ def main():
         )
 
         if user_msg:
-            st.session_state.user_msg = user_msg
+    st.session_state.user_msg = user_msg
 
-        if "user_msg" in st.session_state and st.session_state.user_msg:
-            render_chat()
-            with st.chat_message("user"):
-                st.markdown(st.session_state.user_msg, True)
-            st.session_state.chat_log.append({"name": "user", "msg": st.session_state.user_msg, "citations": []})
+if "user_msg" in st.session_state and st.session_state.user_msg:
+    render_chat()
+    with st.chat_message("user"):
+        st.markdown(st.session_state.user_msg, True)
+    st.session_state.chat_log.append({"name": "user", "msg": st.session_state.user_msg, "citations": []})
 
-            file = None
-            if uploaded_file is not None:
-                file = handle_uploaded_file(uploaded_file)
-            run_stream(st.session_state.user_msg, file, assistant_id)
-            st.session_state.in_progress = False
-            st.session_state.user_msg = ""
-            st.rerun()
+    file = None
+    if uploaded_file is not None:
+        file = handle_uploaded_file(uploaded_file)
+    run_stream(st.session_state.user_msg, file, assistant_id)
+    st.session_state.in_progress = False
+    st.session_state.user_msg = ""
+    st.rerun()
 
-        render_chat()
+render_chat()
 
-        st.sidebar.title("Citations")
-        if st.session_state.citations:
-            for idx, (citation_text, citation_source) in enumerate(st.session_state.citations, 1):
-                st.sidebar.write(f”{idx}. {citation_text}: {citation_source}”)
-if name == “main”:
-main()
+st.sidebar.title("Citations")
+if st.session_state.citations:
+    for idx, (citation_text, citation_source) in enumerate(st.session_state.citations, 1):
+        st.sidebar.write(f"{idx}. {citation_text}: {citation_source}")
+
+if __name__ == "__main__":
+    main()
