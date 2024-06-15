@@ -222,7 +222,7 @@ def main():
 if user_msg:
     st.session_state.user_msg = user_msg
 
-if "user_msg" in st.session_state:
+if "user_msg" in st.session_state and st.session_state.user_msg:
     render_chat()
     with st.chat_message("user"):
         st.markdown(st.session_state.user_msg, True)
