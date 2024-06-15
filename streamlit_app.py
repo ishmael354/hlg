@@ -1,4 +1,3 @@
-import os
 import openai
 import streamlit as st
 import re
@@ -131,23 +130,35 @@ def main():
     st.title("AI Assistant Chat")
     st.write("Ask questions about your dataset")
 
-    assistant_selection = st.selectbox(
+    assistant_selection = st.sidebar.selectbox(
         "Choose an assistant",
         list(assistants.keys()),
         format_func=lambda x: assistants[x]
     )
     assistant_id = assistant_ids[assistant_selection]
 
-    st.sidebar.title("Assistant Selector")
-    st.sidebar.file_uploader(
+    uploaded_file = st.sidebar.file_uploader(
         "Upload a file",
         type=["txt", "pdf", "png", "jpg", "jpeg", "csv", "json", "geojson", "xlsx", "xls"]
     )
+    if uploaded_file:
+        file = handle_uploaded_file(uploaded_file)
+
     st.sidebar.button("Download Chat as CSV")
 
     user_msg = st.chat_input(
         "What is your query?", on_submit=disable_form, disabled=st.session_state.in_progress
     )
+
+    example_prompts = [
+        "What are some trends in this data set?",
+        "Suggest some visualizations to make based on this data",
+        "Tell me some unexpected findings in the data set"
+    ]
+
+    for prompt in example_prompts:
+        if st.button(prompt):
+            st.session_state.user_msg = prompt
 
     if user_msg:
         st.session_state.user_msg = user_msg
