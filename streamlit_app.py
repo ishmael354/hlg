@@ -184,14 +184,14 @@ def main():
                 try:
                     thread = create_thread()
                     create_message(thread, st.session_state.user_msg, file)
-                    response = openai.beta.threads.runs.create(thread_id=thread.id, assistant_id=st.session_state.assistant_id)
-                    
-                    if 'messages' in response:
-                        for message in response['messages']:
+                    with openai.beta.threads.runs.stream(
+                        thread_id=thread.id,
+                        assistant_id=st.session_state.assistant_id,
+                        event_handler=EventHandler(),
+                    ) as stream:
+                        for message in stream:
                             clean_message_content(message)
                             st.session_state.chat_log.append({"name": "assistant", "msg": message['content'][0]['text']})
-                    else:
-                        st.error("No messages found in the response.")
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
 
