@@ -30,6 +30,7 @@ class EventHandler(AssistantEventHandler):
                 formatted_text = formatted_text.replace(citation, f"[{number}]")
             st.session_state.current_markdown.markdown(formatted_text, True)
             st.session_state.chat_log.append({"name": "assistant", "msg": formatted_text, "citations": citations})
+            st.session_state.citations.extend(citations)
         except AttributeError as e:
             st.error(f"Error processing text: {e}")
 
