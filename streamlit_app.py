@@ -133,6 +133,26 @@ def main():
         csv_data = download_chat_as_csv()
         st.sidebar.download_button(label="Download Chat as CSV", data=csv_data, file_name='chat_log.csv', mime='text/csv')
 
+        # Create a fixed top bar
+        st.markdown(
+            """
+            <style>
+            .fixed-header {
+                position: fixed;
+                top: 0;
+                width: 100%;
+                background-color: #fff;
+                z-index: 9999;
+                padding-top: 20px;
+            }
+            .fixed-header .stButton { 
+                display: inline-block; 
+                margin-right: 10px; 
+            }
+            </style>
+            """, unsafe_allow_html=True)
+
+        st.markdown('<div class="fixed-header">', unsafe_allow_html=True)
         st.title("AI Assistant Chat")
         st.subheader("Ask questions about your dataset")
 
@@ -149,6 +169,8 @@ def main():
         with col3:
             if st.button("Tell me some unexpected findings in the data set"):
                 st.session_state.user_msg = "Tell me some unexpected findings in the data set"
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
         user_msg = st.chat_input(
             "What is your query?", on_submit=disable_form, disabled=st.session_state.in_progress
