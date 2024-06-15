@@ -93,6 +93,19 @@ class EventHandler(AssistantEventHandler):
                         st.markdown(output, True)
                         st.session_state.chat_log.append({"name": "assistant", "msg": output})
 
+def create_message(thread, user_input, file=None):
+    if file:
+        return openai.beta.threads.messages.create(
+            thread_id=thread.id,
+            text=user_input,
+            file_id=file.id
+        )
+    else:
+        return openai.beta.threads.messages.create(
+            thread_id=thread.id,
+            text=user_input
+        )
+
 def run_stream(user_input, assistant_id):
     if "thread" not in st.session_state:
         st.session_state.thread = openai.beta.threads.create()
@@ -156,8 +169,9 @@ def main():
         "Tell me some unexpected findings in the data set"
     ]
 
-    for prompt in example_prompts:
-        if st.button(prompt):
+    cols = st.columns(len(example_prompts))
+    for idx, prompt in enumerate(example_prompts):
+        if cols[idx].button(prompt):
             st.session_state.user_msg = prompt
 
     if user_msg:
