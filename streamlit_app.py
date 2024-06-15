@@ -242,5 +242,5 @@ def main():
             for idx, (citation_text, citation_source) in enumerate(st.session_state.citations, 1):
                 st.sidebar.write(f"{idx}. {citation_text}: {citation_source}")
 
-if __name__=="main":
+if __name__ == "main":
     main()
