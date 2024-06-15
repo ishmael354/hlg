@@ -5,6 +5,7 @@ import pandas as pd
 import streamlit.components.v1 as components
 from utils import generate_html_with_citations, add_tooltip_css
 from event_handler import EventHandler
+import re
 
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -56,11 +57,22 @@ def run_stream(user_input, file, assistant_id):
         assistant_id=assistant_id,
         event_handler=EventHandler(),
     ) as stream:
-        stream.until_done()
+        for message in stream:
+            clean_message_content(message['content'])
 
 def handle_uploaded_file(uploaded_file):
     file = openai.files.create(file=uploaded_file, purpose="assistants")
     return file
+
+def clean_message_content(content):
+    if isinstance(content, list):
+        for part in content:
+            if 'text' in part:
+                part['text'] = re.sub(r'【[^】]+】', '', part['text'])
+                part['text'] = re.sub(r'sandbox:[^\s]+', '', part['text'])
+    elif isinstance(content, dict) and 'text' in content:
+        content['text'] = re.sub(r'【[^】]+】', '', content['text'])
+        content['text'] = re.sub(r'sandbox:[^\s]+', '', content['text'])
 
 def render_chat():
     try:
