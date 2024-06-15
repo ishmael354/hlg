@@ -38,6 +38,7 @@ assistant_ids = {
 def create_thread():
     print("Creating thread...")
     thread = openai.beta.threads.create()
+    print(f"Thread created: {thread.id}")
     return thread
 
 def create_message(thread, content, file):
@@ -48,6 +49,7 @@ def create_message(thread, content, file):
     openai.beta.threads.messages.create(
         thread_id=thread.id, role="user", content=content, attachments=attachments
     )
+    print(f"Message created in thread {thread.id}")
 
 def run_stream(user_input, file, assistant_id):
     print("Running stream...")
@@ -60,10 +62,12 @@ def run_stream(user_input, file, assistant_id):
         event_handler=EventHandler(),
     ) as stream:
         stream.until_done()
+    print("Stream completed")
 
 def handle_uploaded_file(uploaded_file):
     print("Handling uploaded file...")
     file = openai.files.create(file=uploaded_file, purpose="assistants")
+    print(f"File uploaded: {file.id}")
     return file
 
 def render_chat():
