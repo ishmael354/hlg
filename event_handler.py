@@ -22,14 +22,19 @@ class EventHandler(AssistantEventHandler):
     @override
     def on_text_done(self, text):
         try:
-            clean_text = text.value if hasattr(text, 'annotations') else text
-            citations = [(ann.text, ann.file_citation.text) for ann in getattr(text, 'annotations', [])]
-            citation_numbers = {ann.text: idx + 1 for idx, ann in enumerate(getattr(text, 'annotations', []))}
-            formatted_text = clean_text
-            for citation, number in citation_numbers.items():
-                formatted_text = formatted_text.replace(citation, f"[{number}]")
-            st.session_state.current_markdown.markdown(formatted_text, True)
-            st.session_state.chat_log.append({"name": "assistant", "msg": formatted_text, "citations": citations})
+            clean_text = text.value
+            citations = []
+            if hasattr(text, 'annotations'):
+                annotations = text.annotations
+                citation_numbers = {ann.text: idx + 1 for idx, ann in enumerate(annotations)}
+                for index, annotation in enumerate(annotations):
+                    clean_text = clean_text.replace(annotation.text, f'[{index + 1}]')
+                    if hasattr(annotation, 'file_citation'):
+                        citations.append((f'[{index + 1}]', f'{annotation.file_citation.quote} from {annotation.file_citation.file_id}'))
+                    elif hasattr(annotation, 'file_path'):
+                        citations.append((f'[{index + 1}]', f'Click <here> to download {annotation.file_path.file_id}'))
+            st.session_state.current_markdown.markdown(clean_text, True)
+            st.session_state.chat_log.append({"name": "assistant", "msg": clean_text, "citations": citations})
             st.session_state.citations.extend(citations)
         except AttributeError as e:
             st.error(f"Error processing text: {e}")
