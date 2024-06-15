@@ -111,12 +111,13 @@ def run_stream(user_input, assistant_id):
         st.session_state.thread = openai.beta.threads.create()
     try:
         create_message(st.session_state.thread, user_input)
-        with openai.beta.threads.runs.stream(
-            thread_id=st.session_state.thread.id,
-            assistant_id=assistant_id,
-            event_handler=EventHandler(),
-        ) as stream:
-            stream.until_done()
+        with st.spinner("Processing..."):
+            with openai.beta.threads.runs.stream(
+                thread_id=st.session_state.thread.id,
+                assistant_id=assistant_id,
+                event_handler=EventHandler(),
+            ) as stream:
+                stream.until_done()
     except Exception as e:
         st.error(f"Error running stream: {str(e)}")
 
