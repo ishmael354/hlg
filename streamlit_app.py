@@ -10,7 +10,6 @@ from event_handler import EventHandler
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Verify that all secrets are loaded
-required_secrets are loaded
 required_secrets = [
     "ASSISTANT1_ID", "ASSISTANT2_ID", "ASSISTANT3_ID", "ASSISTANT4_ID",
     "USERNAME", "PASSWORD"
@@ -194,8 +193,8 @@ def main():
         render_chat()
 
         # Create a separate column for citations
-        col4 = st.columns(1)
-        with col4[0]:
+        col4 = st.columns([3, 1])
+        with col4[1]:
             st.title("Citations")
             if st.session_state.citations:
                 for idx, (citation_text, citation_source) in enumerate(st.session_state.citations, 1):
