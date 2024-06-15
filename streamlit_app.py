@@ -58,21 +58,18 @@ def run_stream(user_input, file, assistant_id):
         event_handler=EventHandler(),
     ) as stream:
         for message in stream:
-            clean_message_content(message['content'])
+            clean_message_content(message)
 
 def handle_uploaded_file(uploaded_file):
     file = openai.files.create(file=uploaded_file, purpose="assistants")
     return file
 
-def clean_message_content(content):
-    if isinstance(content, list):
-        for part in content:
+def clean_message_content(message):
+    if 'content' in message:
+        for part in message['content']:
             if 'text' in part:
                 part['text'] = re.sub(r'【[^】]+】', '', part['text'])
                 part['text'] = re.sub(r'sandbox:[^\s]+', '', part['text'])
-    elif isinstance(content, dict) and 'text' in content:
-        content['text'] = re.sub(r'【[^】]+】', '', content['text'])
-        content['text'] = re.sub(r'sandbox:[^\s]+', '', content['text'])
 
 def render_chat():
     try:
