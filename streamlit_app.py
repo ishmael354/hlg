@@ -36,23 +36,18 @@ assistant_ids = {
 }
 
 def create_thread():
-    print("Creating thread...")
     thread = openai.beta.threads.create()
-    print(f"Thread created: {thread.id}")
     return thread
 
 def create_message(thread, content, file):
-    print("Creating message...")
     attachments = []
     if file is not None:
         attachments.append({"file_id": file.id, "tools": [{"type": "code_interpreter"}]})
     openai.beta.threads.messages.create(
         thread_id=thread.id, role="user", content=content, attachments=attachments
     )
-    print(f"Message created in thread {thread.id}")
 
 def run_stream(user_input, file, assistant_id):
-    print("Running stream...")
     if "thread" not in st.session_state:
         st.session_state.thread = create_thread()
     create_message(st.session_state.thread, user_input, file)
@@ -62,17 +57,13 @@ def run_stream(user_input, file, assistant_id):
         event_handler=EventHandler(),
     ) as stream:
         stream.until_done()
-    print("Stream completed")
 
 def handle_uploaded_file(uploaded_file):
-    print("Handling uploaded file...")
     file = openai.files.create(file=uploaded_file, purpose="assistants")
-    print(f"File uploaded: {file.id}")
     return file
 
 def render_chat():
     try:
-        print("Rendering chat...")
         html_content = generate_html_with_citations(st.session_state.chat_log)
         add_tooltip_css()
         components.html(html_content, height=600, scrolling=True)
@@ -80,7 +71,6 @@ def render_chat():
         st.error(f"Error rendering chat: {e}")
 
 def download_chat_as_csv():
-    print("Downloading chat as CSV...")
     df = pd.DataFrame(st.session_state.chat_log)
     csv = df.to_csv(index=False)
     return csv
@@ -121,7 +111,6 @@ def disable_form():
     st.session_state.in_progress = True
 
 def main():
-    print("Running main function...")
     if not st.session_state.logged_in:
         st.title("Login")
         username = st.text_input("Username")
