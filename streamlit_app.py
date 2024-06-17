@@ -57,7 +57,7 @@ class EventHandler(AssistantEventHandler):
         self.current_text = ""
 
     def on_event(self, event):
-        pass
+        st.write(f"Event received: {event}")
 
     def on_text_created(self, text):
         self.current_text = ""
