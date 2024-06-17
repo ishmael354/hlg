@@ -10,7 +10,7 @@ class EventHandler(AssistantEventHandler):
 
     @override
     def on_event(self, event):
-        pass
+        st.write(f"Event received: {event}")
 
     @override
     def on_text_created(self, text):
