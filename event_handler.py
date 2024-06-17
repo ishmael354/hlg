@@ -21,9 +21,9 @@ class EventHandler(AssistantEventHandler):
 
     @override
     def on_text_delta(self, delta, snapshot):
-        if snapshot.value:
-            self.current_text = snapshot.value
-            st.session_state.current_message = snapshot.value
+        if snapshot['value']:
+            self.current_text = snapshot['value']
+            st.session_state.current_message = snapshot['value']
             st.session_state.current_markdown.markdown(st.session_state.current_message, True)
 
     @override
