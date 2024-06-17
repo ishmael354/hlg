@@ -32,6 +32,14 @@ class EventHandler(AssistantEventHandler):
         st.session_state.current_markdown.markdown(clean_text, True)
         st.session_state.chat_log.append({"name": "assistant", "msg": clean_text})
 
+    def handle_event(self, event):
+        if event['type'] == 'text_created':
+            self.on_text_created(event['data'])
+        elif event['type'] == 'text_delta':
+            self.on_text_delta(event['data'], event['snapshot'])
+        elif event['type'] == 'text_done':
+            self.on_text_done(event['data'])
+
 def handle_tool_call(action):
     function_return = {}
     args = json.loads(action.function.arguments)
