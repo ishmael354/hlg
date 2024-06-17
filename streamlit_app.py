@@ -57,9 +57,9 @@ def run_stream(user_input, assistant_id):
         for event in run:
             handler.handle_event(event)
             # If an action is required, handle it
-            if event.status == 'requires_action':
+            if event['status'] == 'requires_action':
                 action_outputs = []
-                for action in event.required_action.submit_tool_outputs.tool_calls:
+                for action in event['required_action']['submit_tool_outputs']['tool_calls']:
                     function_return = handle_tool_call(action)
                     action_outputs.append(function_return)
                 run = openai.beta.threads.runs.submit_tool_outputs(
