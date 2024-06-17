@@ -3,7 +3,6 @@ import re
 from openai import AssistantEventHandler
 from typing_extensions import override
 import streamlit as st
-import json
 
 class EventHandler(AssistantEventHandler):
     def __init__(self):
@@ -43,17 +42,17 @@ class EventHandler(AssistantEventHandler):
 
 def handle_tool_call(action):
     function_return = {}
-    args = json.loads(action['function']['arguments'])  # Ensure correct key access
-    match action['function']['name']:
+    args = json.loads(action.function.arguments)
+    match action.function.name:
         case 'run_command':
-            function_return = {"tool_call_id": action['id'], "output": run_command(args['hostname'], args['command'])}
+            function_return = {"tool_call_id": action.id, "output": run_command(args['hostname'], args['command'])}
         case 'print_working_dir_files':
             path = args.get('path', '')
-            function_return = {"tool_call_id": action['id'], "output": print_working_dir_files(path)}
+            function_return = {"tool_call_id": action.id, "output": print_working_dir_files(path)}
         case 'read_file':
-            function_return = {"tool_call_id": action['id'], "output": read_file(args['path'])}
+            function_return = {"tool_call_id": action.id, "output": read_file(args['path'])}
         case 'write_file':
-            function_return = {"tool_call_id": action['id'], "output": write_file(args['path'], args['contents'])}
+            function_return = {"tool_call_id": action.id, "output": write_file(args['path'], args['contents'])}
         case _:
-            function_return = {"tool_call_id": action['id'], "output": 'Function does not exist'}
+            function_return = {"tool_call_id": action.id, "output": 'Function does not exist'}
     return function_return
