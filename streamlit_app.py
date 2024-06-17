@@ -72,9 +72,9 @@ def run_stream(user_input, assistant_id):
         st.error(f"Error running stream: {str(e)}")
 
 def main():
-    st.title("AI Assistant Chat")
-    assistant_id = assistant_ids[st.selectbox("Choose an assistant", list(assistants.keys()))]
-    uploaded_file = st.file_uploader("Upload a file")
+    st.sidebar.title("AI Assistant Chat")
+    assistant_id = assistant_ids[st.sidebar.selectbox("Choose an assistant", list(assistants.keys()))]
+    uploaded_file = st.sidebar.file_uploader("Upload a file")
 
     if "chat_log" not in st.session_state:
         st.session_state.chat_log = []
