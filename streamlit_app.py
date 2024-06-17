@@ -2,7 +2,7 @@ import openai
 import streamlit as st
 import re
 import time
-from event_handler import EventHandler, handle_tool_call
+from openai import AssistantEventHandler
 
 # Set OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -32,20 +32,12 @@ assistant_ids = {
     "assistant_4": st.secrets["ASSISTANT4_ID"]
 }
 
-def create_message(thread, user_input, file=None):
-    if file:
-        return openai.beta.threads.messages.create(
-            thread_id=thread.id,
-            role="user",
-            content=user_input,
-            file_ids=[file.id]
-        )
-    else:
-        return openai.beta.threads.messages.create(
-            thread_id=thread.id,
-            role="user",
-            content=user_input
-        )
+def create_message(thread, user_input):
+    return openai.beta.threads.messages.create(
+        thread_id=thread.id,
+        role="user",
+        content=user_input
+    )
 
 def run_stream(user_input, assistant_id):
     if "thread" not in st.session_state:
@@ -56,20 +48,41 @@ def run_stream(user_input, assistant_id):
         run = openai.beta.threads.runs.create(thread_id=st.session_state.thread.id, assistant_id=assistant_id)
         for event in run:
             handler.handle_event(event)
-            # If an action is required, handle it
-            if event['status'] == 'requires_action':
-                action_outputs = []
-                for action in event['required_action']['submit_tool_outputs']['tool_calls']:
-                    function_return = handle_tool_call(action)
-                    action_outputs.append(function_return)
-                run = openai.beta.threads.runs.submit_tool_outputs(
-                    thread_id=st.session_state.thread.id,
-                    run_id=run.id,
-                    tool_outputs=action_outputs
-                )
             time.sleep(0.2) # Sleep and check run status again
     except Exception as e:
         st.error(f"Error running stream: {str(e)}")
+
+class EventHandler(AssistantEventHandler):
+    def __init__(self):
+        self.current_text = ""
+
+    def on_event(self, event):
+        pass
+
+    def on_text_created(self, text):
+        self.current_text = ""
+        st.session_state.current_message = ""
+        with st.chat_message("Assistant"):
+            st.session_state.current_markdown = st.empty()
+
+    def on_text_delta(self, delta, snapshot):
+        if snapshot['value']:
+            self.current_text = snapshot['value']
+            st.session_state.current_message = snapshot['value']
+            st.session_state.current_markdown.markdown(st.session_state.current_message, True)
+
+    def on_text_done(self, text):
+        clean_text = re.sub(r'【[^】]+】', '', self.current_text)
+        st.session_state.current_markdown.markdown(clean_text, True)
+        st.session_state.chat_log.append({"name": "assistant", "msg": clean_text})
+
+    def handle_event(self, event):
+        if event['type'] == 'text_created':
+            self.on_text_created(event['data'])
+        elif event['type'] == 'text_delta':
+            self.on_text_delta(event['data'], event['snapshot'])
+        elif event['type'] == 'text_done':
+            self.on_text_done(event['data'])
 
 def main():
     st.sidebar.title("AI Assistant Chat")
