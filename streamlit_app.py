@@ -56,6 +56,7 @@ def run_stream(user_input, assistant_id):
         run = openai.beta.threads.runs.create(thread_id=st.session_state.thread.id, assistant_id=assistant_id)
         for event in run:
             handler.handle_event(event)
+            # If an action is required, handle it
             if event['status'] == 'requires_action':
                 action_outputs = []
                 for action in event['required_action']['submit_tool_outputs']['tool_calls']:
@@ -66,7 +67,7 @@ def run_stream(user_input, assistant_id):
                     run_id=run.id,
                     tool_outputs=action_outputs
                 )
-            time.sleep(0.2)
+            time.sleep(0.2) # Sleep and check run status again
     except Exception as e:
         st.error(f"Error running stream: {str(e)}")
 
