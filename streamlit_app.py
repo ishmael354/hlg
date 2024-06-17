@@ -38,7 +38,7 @@ def create_message(thread, user_input, file=None):
             thread_id=thread.id,
             role="user",
             content=user_input,
-            file_id=file.id
+            file_ids=[file.id]
         )
     else:
         return openai.beta.threads.messages.create(
